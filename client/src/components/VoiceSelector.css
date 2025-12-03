@@ -1,0 +1,35 @@
+.voice-selector {
+  min-width: 250px;
+}
+
+.voice-select {
+  width: 100%;
+}
+
+/* Override react-select styles */
+.voice-select .select__control {
+  border-radius: 4px;
+  border-color: #ddd;
+  box-shadow: none;
+}
+
+.voice-select .select__control:hover {
+  border-color: #999;
+}
+
+.voice-select .select__menu {
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.voice-select .select__option {
+  cursor: pointer;
+}
+
+.voice-select .select__option--is-focused {
+  background-color: #f0f0f0;
+}
+
+.voice-select .select__option--is-selected {
+  background-color: #4CAF50;
+} 

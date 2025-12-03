@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Story Creator 📚</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Add Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+</head>
+<body>
+    <div class="container">
+        <h1>AI Story Creator 📚</h1>
+        
+        <div class="controls-row">
+            <div class="voice-controls">
+                <select id="voiceSelect" class="voice-select">
+                    <option value="">Choose a fun voice... 🎭</option>
+                </select>
+            </div>
+            <div class="file-controls">
+                <label for="pdfInput" class="file-input-wrapper">
+                    <input type="file" id="pdfInput" accept=".pdf">
+                </label>
+                <div id="pdfStatus" class="pdf-status"></div>
+            </div>
+        </div>
+
+        <div class="input-section">
+            <div class="text-container">
+                <div id="textContent" class="text-content" contenteditable="true" role="textbox" aria-multiline="true" placeholder="Type or paste your story here... ✍️"></div>
+            </div>
+            
+            <div class="button-controls">
+                <button id="browseButton" class="secondary-button">Browse Stories 🌍</button>
+                <button id="readButton" class="primary-button">Read Story Aloud 📢</button>
+                <button id="translateButton" class="secondary-button">Translate 🌐</button>
+                <button id="stopButton" class="secondary-button">Stop Reading ⏹️</button>
+                <button id="clearButton" class="secondary-button">Clear Text 🧹</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Story Browser Modal -->
+    <div id="storyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Browse Stories 🌍</h2>
+                <button class="close-button">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="search-controls">
+                    <input type="text" id="storySearch" placeholder="Search stories... 🔍">
+                    <select id="storyLanguage" class="story-language">
+                        <option value="">All Languages</option>
+                        <option value="en">English</option>
+                        <option value="es">Spanish</option>
+                        <option value="fr">French</option>
+                        <option value="de">German</option>
+                        <option value="it">Italian</option>
+                    </select>
+                </div>
+                <div id="storyList" class="story-list">
+                    <!-- Stories will be loaded here -->
+                </div>
+                <div id="storyLoading" class="story-loading">
+                    <div class="spinner"></div>
+                    <p>Loading stories...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add pdf.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Add jQuery and Select2 -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        // Set the worker source path
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <script src="script.js"></script>
+</body>
+</html> 
