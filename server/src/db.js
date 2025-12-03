@@ -35,6 +35,11 @@ pool.on('error', (err) => {
  */
 async function query(queryText, params = []) {
   try {
+    // Check if connection string is available
+    if (!process.env.POSTGRES_URL) {
+      throw new Error('POSTGRES_URL environment variable is not set');
+    }
+    
     const client = await pool.connect();
     try {
       const result = await client.query(queryText, params);
@@ -44,6 +49,11 @@ async function query(queryText, params = []) {
     }
   } catch (error) {
     console.error('Database query error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      connectionString: process.env.POSTGRES_URL ? 'Set' : 'Not set'
+    });
     throw error;
   }
 }

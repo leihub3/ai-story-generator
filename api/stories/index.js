@@ -51,16 +51,35 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Add a test endpoint to verify the function loads
+app.get('/test', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Stories API is loaded',
+    hasRouter: !!storiesRouter,
+    env: {
+      hasPostgresUrl: !!process.env.POSTGRES_URL,
+      hasOpenAiKey: !!process.env.OPENAI_API_KEY,
+      nodeEnv: process.env.NODE_ENV
+    }
+  });
+});
+
 // Export as Vercel serverless function handler
 module.exports = (req, res) => {
   try {
     return app(req, res);
   } catch (error) {
     console.error('Function invocation error:', error);
-    return res.status(500).json({ 
-      error: 'Function invocation failed',
-      message: error.message 
-    });
+    console.error('Error stack:', error.stack);
+    
+    if (!res.headersSent) {
+      return res.status(500).json({ 
+        error: 'Function invocation failed',
+        message: error.message,
+        type: error.constructor.name
+      });
+    }
   }
 };
 
