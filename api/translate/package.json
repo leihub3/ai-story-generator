@@ -1,0 +1,14 @@
+{
+  "name": "ai-story-generator-translate-fn",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vercel Serverless Function for /api/translate",
+  "dependencies": {
+    "axios": "^1.6.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2"
+  }
+}
+
+
