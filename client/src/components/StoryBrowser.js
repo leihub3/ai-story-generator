@@ -5,7 +5,7 @@ import styled from '@emotion/styled';
 import './StoryBrowser.css';
 import ConfirmModal from './ConfirmModal';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL || '/api';
 
 // Styled components
 const Container = styled(motion.div)`

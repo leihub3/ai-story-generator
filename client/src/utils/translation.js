@@ -7,12 +7,12 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'IT', name: 'Italian' }
 ];
 
-const API_URL = 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api');
 
 // Function to translate text using DeepL API
 export async function translateText(text, targetLang) {
   try {
-    const response = await fetch(`${API_URL}/api/translate`, {
+    const response = await fetch(`${API_URL}/translate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
