@@ -5,7 +5,7 @@ import LanguageSelector from './LanguageSelector';
 import './StoryBrowser.css';
 import ConfirmModal from './ConfirmModal';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api');
 
 const SectionContainer = styled.div`
   min-height: 100vh;
