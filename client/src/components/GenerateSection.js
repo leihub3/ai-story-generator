@@ -370,6 +370,7 @@ const GenerateSection = ({ onSelectStory, onStoriesSaved }) => {
     };
     
     fetchRateLimit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = async () => {
@@ -556,7 +557,6 @@ const GenerateSection = ({ onSelectStory, onStoriesSaved }) => {
       <GenerationBackground>
         {[...Array(4)].map((_, i) => {
           const width = typeof window !== 'undefined' ? window.innerWidth : 1200;
-          const height = typeof window !== 'undefined' ? window.innerHeight : 800;
           return (
             <FloatingShape
               key={i}

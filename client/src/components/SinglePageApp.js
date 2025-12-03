@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import styled from '@emotion/styled';
 import LandingSection from './LandingSection';
 import GenerateSection from './GenerateSection';

@@ -144,7 +144,7 @@ const LanguageSelector = ({
         options={options}
         placeholder={placeholder}
         className="language-select"
-        menuPortalTarget={document.body}
+        menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
         menuPosition="fixed"
         styles={{
           menuPortal: (base) => ({ ...base, zIndex: 1000 })

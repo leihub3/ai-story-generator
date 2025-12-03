@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import styled from '@emotion/styled';
 import './StoryViewer.css';
@@ -350,7 +350,7 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
   };
 
   // Auto-scroll to paragraph
-  const scrollToParagraph = (index) => {
+  const scrollToParagraph = useCallback((index) => {
     if (paragraphRefs.current[index] && isPlaying) {
       const paragraph = paragraphRefs.current[index];
       const rect = paragraph.getBoundingClientRect();
@@ -373,13 +373,13 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
         }
       }
     }
-  };
+  }, [isPlaying]);
 
   useEffect(() => {
     if (isPlaying && currentParagraph >= 0) {
       scrollToParagraph(currentParagraph);
     }
-  }, [currentParagraph, isPlaying]);
+  }, [currentParagraph, isPlaying, scrollToParagraph]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -551,11 +551,9 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
 
       // Place image first if it exists
       let imageYPosition = yPosition;
-      let imagePlaced = false;
       if (imgData) {
         const imageFormat = imgData.startsWith('data:image/png') ? 'PNG' : 'JPEG';
         pdf.addImage(imgData, imageFormat, imageX, imageYPosition, pdfImgWidth, pdfImgHeight);
-        imagePlaced = true;
       }
 
       // Add content with paragraph breaks
