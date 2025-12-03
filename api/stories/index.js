@@ -1,85 +1,87 @@
-// Vercel serverless function for stories API
-// This handles all /api/stories/* routes
+// Vercel serverless function for stories API (sin Express)
 
-// Load environment variables first
 require('dotenv').config();
 
-const express = require('express');
-const cors = require('cors');
+const {
+  getAllStories,
+  checkRateLimit,
+} = require('../../server/src/db');
 
-let storiesRouter;
-try {
-  storiesRouter = require('../../server/src/routes/stories');
-} catch (error) {
-  console.error('Error loading stories router:', error);
-  // Fallback handler if module fails to load
-  storiesRouter = express.Router();
-  storiesRouter.all('*', (req, res) => {
-    res.status(500).json({ 
-      error: 'Server configuration error',
-      details: error.message 
-    });
-  });
+// Helper para obtener IP en entorno serverless
+function getIpAddress(req) {
+  return (
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    req.headers['x-real-ip'] ||
+    req.socket?.remoteAddress ||
+    'unknown'
+  );
 }
 
-const app = express();
+module.exports = async (req, res) => {
+  const { method, url } = req;
 
-// Trust proxy for Vercel
-app.set('trust proxy', true);
+  // Vercel pasa solo la parte después de /api/stories, por ejemplo: "/test", "/saved"
+  const path = (url || '').split('?')[0] || '/';
 
-// CORS configuration
-app.use(cors({
-  origin: true, // Allow all origins in production
-  methods: ['GET', 'POST', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'X-RateLimit-Limit'],
-  credentials: true
-}));
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Mount stories router
-app.use('/', storiesRouter);
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Serverless function error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  });
-});
-
-// Add a test endpoint to verify the function loads
-app.get('/test', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    message: 'Stories API is loaded',
-    hasRouter: !!storiesRouter,
-    env: {
-      hasPostgresUrl: !!process.env.POSTGRES_URL,
-      hasOpenAiKey: !!process.env.OPENAI_API_KEY,
-      nodeEnv: process.env.NODE_ENV
-    }
-  });
-});
-
-// Export as Vercel serverless function handler
-module.exports = (req, res) => {
   try {
-    return app(req, res);
-  } catch (error) {
-    console.error('Function invocation error:', error);
-    console.error('Error stack:', error.stack);
-    
-    if (!res.headersSent) {
-      return res.status(500).json({ 
-        error: 'Function invocation failed',
-        message: error.message,
-        type: error.constructor.name
+    // 1) Endpoint de test: /api/stories/test
+    if (path === '/test') {
+      return res.status(200).json({
+        status: 'ok',
+        message: 'Stories API serverless handler is running (sin Express)',
+        env: {
+          hasPostgresUrl: !!process.env.POSTGRES_URL,
+          hasOpenAiKey: !!process.env.OPENAI_API_KEY,
+          nodeEnv: process.env.NODE_ENV || 'unknown',
+        },
       });
     }
+
+    // 2) Rate limit: GET /api/stories/rate-limit
+    if (method === 'GET' && path === '/rate-limit') {
+      const ipAddress = getIpAddress(req);
+      const info = await checkRateLimit(ipAddress, 3);
+
+      res.setHeader('X-RateLimit-Remaining', info.remaining);
+      res.setHeader('X-RateLimit-Reset', info.resetDate.toISOString());
+      res.setHeader('X-RateLimit-Limit', 3);
+
+      return res.status(200).json({
+        remaining: info.remaining,
+        limit: 3,
+        resetDate: info.resetDate.toISOString(),
+      });
+    }
+
+    // 3) Historias guardadas: GET /api/stories/saved
+    if (method === 'GET' && path === '/saved') {
+      const ipAddress = getIpAddress(req);
+      const stories = await getAllStories(ipAddress);
+
+      const formatted = stories.map((story) => ({
+        id: story.id,
+        title: story.title,
+        content: story.content,
+        language: story.language,
+        source: story.source,
+        tag: story.tag,
+        imageUrl: story.image_url,
+        createdAt: story.created_at,
+      }));
+
+      return res.status(200).json(formatted);
+    }
+
+    // Cualquier otra ruta aún no implementada
+    return res.status(404).json({
+      error: 'Not implemented',
+      details: `Path ${path} con método ${method} aún no está manejado en la API serverless de stories.`,
+    });
+  } catch (error) {
+    console.error('Stories API handler error:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message,
+    });
   }
 };
-
