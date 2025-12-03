@@ -37,9 +37,13 @@ const getIpAddress = (req) => {
 pdfjsLib.GlobalWorkerOptions.workerSrc = require.resolve('pdfjs-dist/build/pdf.worker.js');
 
 // Configure multer for file uploads
+// Use /tmp for Vercel serverless (only writable directory)
 const storage = multer.diskStorage({
   destination: async function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../../data/uploads');
+    // Use /tmp for serverless environments, fallback to local data directory for development
+    const uploadDir = process.env.VERCEL 
+      ? '/tmp/uploads' 
+      : path.join(__dirname, '../../data/uploads');
     try {
       await fs.mkdir(uploadDir, { recursive: true });
       cb(null, uploadDir);
@@ -67,11 +71,16 @@ const upload = multer({
   }
 });
 
-// Path to saved stories JSON file
-const SAVED_STORIES_PATH = path.join(__dirname, '../../data/saved_stories.json');
+// Path to saved stories JSON file (only used in local development)
+// In production/serverless, we use the database instead
+const SAVED_STORIES_PATH = process.env.VERCEL 
+  ? '/tmp/saved_stories.json'
+  : path.join(__dirname, '../../data/saved_stories.json');
 
 // Ensure the data directory exists and initialize saved stories file
+// Only needed for local development
 const ensureDataDirectory = async () => {
+  if (process.env.VERCEL) return; // Skip in serverless
   const dataDir = path.join(__dirname, '../../data');
   try {
     await fs.access(dataDir);
@@ -80,8 +89,9 @@ const ensureDataDirectory = async () => {
   }
 };
 
-// Initialize saved stories file if it doesn't exist
+// Initialize saved stories file if it doesn't exist (only for local dev)
 const initializeSavedStories = async () => {
+  if (process.env.VERCEL) return; // Skip in serverless - use database instead
   try {
     await fs.access(SAVED_STORIES_PATH);
   } catch {

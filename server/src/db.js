@@ -9,7 +9,8 @@ require('dotenv').config();
 // Create a connection pool
 const pool = new Pool({
   connectionString: process.env.POSTGRES_URL,
-  ssl: process.env.POSTGRES_URL?.includes('vercel') ? {
+  // Vercel Postgres always requires SSL
+  ssl: process.env.VERCEL || process.env.POSTGRES_URL?.includes('vercel') || process.env.POSTGRES_URL?.includes('neon') ? {
     rejectUnauthorized: false
   } : false
 });
@@ -17,7 +18,13 @@ const pool = new Pool({
 // Handle pool errors
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
-  process.exit(-1);
+  // Don't exit in serverless environment - just log the error
+  if (process.env.VERCEL) {
+    console.error('Database pool error in serverless function:', err);
+  } else {
+    // Only exit in non-serverless environments
+    process.exit(-1);
+  }
 });
 
 /**

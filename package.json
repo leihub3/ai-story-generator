@@ -1,0 +1,21 @@
+{
+  "name": "ai-story-generator",
+  "version": "1.0.0",
+  "description": "AI Story Creator - Full stack application",
+  "private": true,
+  "scripts": {
+    "build": "cd client && npm install && npm run build",
+    "start": "cd server && npm start"
+  },
+  "dependencies": {
+    "pg": "^8.11.3",
+    "axios": "^1.6.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "multer": "^2.0.1",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^2.16.105"
+  }
+}
+
