@@ -570,7 +570,6 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
         if (yPosition > pageHeight - margin - 10) {
           pdf.addPage();
           yPosition = margin;
-          imagePlaced = false;
         }
         
         // All paragraphs are treated the same (no drop cap in PDF)
@@ -584,7 +583,6 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
           if (yPosition > pageHeight - margin - 10) {
             pdf.addPage();
             yPosition = margin;
-            imagePlaced = false;
           }
           pdf.text(line, margin, yPosition);
           yPosition += lineHeight;

@@ -4,3 +4,15 @@
 /server/node_modules
 /server/.env
 /client/.env
+/client/build
+/server/build
+/server/data
+/server/logs
+/server/uploads
+/server/node_modules
+/server/node_modules
+/server/package-lock.json
+/server/package.json
+/server/README.md
+/server/LICENSE
+/server/README.md
