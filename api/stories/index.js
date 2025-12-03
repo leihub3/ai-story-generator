@@ -1,4 +1,4 @@
-// Vercel serverless function for stories API (sin Express)
+// Vercel serverless function for stories API (SIN EXPRESS)
 
 require('dotenv').config();
 
