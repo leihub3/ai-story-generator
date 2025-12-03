@@ -1,65 +1,72 @@
-// Vercel serverless function for translate API
+// Vercel serverless function for translate API (sin Express)
 
-// Load environment variables first
 require('dotenv').config();
+const axios = require('axios');
 
-const express = require('express');
-const cors = require('cors');
+module.exports = async (req, res) => {
+  const { method } = req;
 
-let translateRouter;
-try {
-  translateRouter = require('../../server/src/routes/translate');
-} catch (error) {
-  console.error('Error loading translate router:', error);
-  // Fallback handler if module fails to load
-  translateRouter = express.Router();
-  translateRouter.all('*', (req, res) => {
-    res.status(500).json({ 
-      error: 'Server configuration error',
-      details: error.message 
-    });
-  });
-}
+  if (method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
-const app = express();
-
-// Trust proxy for Vercel
-app.set('trust proxy', true);
-
-// CORS configuration
-app.use(cors({
-  origin: true,
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Mount translate router
-app.use('/', translateRouter);
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Serverless function error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  });
-});
-
-// Export as Vercel serverless function handler
-module.exports = (req, res) => {
   try {
-    return app(req, res);
+    const { text, targetLang } = req.body || {};
+
+    if (!text || !targetLang) {
+      console.error('Missing parameters:', { text: !!text, targetLang: !!targetLang });
+      return res.status(400).json({
+        error: 'Missing required parameters',
+        details: 'Both text and targetLang are required',
+      });
+    }
+
+    if (!process.env.DEEPL_API_KEY) {
+      console.error('DeepL API key is not configured');
+      return res.status(500).json({
+        error: 'Server configuration error',
+        details: 'DeepL API key is not configured',
+      });
+    }
+
+    console.log('Translating text:', {
+      textLength: text.length,
+      targetLang,
+      hasApiKey: !!process.env.DEEPL_API_KEY,
+    });
+
+    const response = await axios.post(
+      'https://api-free.deepl.com/v2/translate',
+      {
+        text: [text],
+        target_lang: targetLang,
+      },
+      {
+        headers: {
+          Authorization: `DeepL-Auth-Key ${process.env.DEEPL_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (response.data && response.data.translations && response.data.translations[0]) {
+      console.log('Translation successful');
+      return res.status(200).json({ translatedText: response.data.translations[0].text });
+    } else {
+      console.error('Invalid response from DeepL API:', response.data);
+      throw new Error('Invalid response from DeepL API');
+    }
   } catch (error) {
-    console.error('Function invocation error:', error);
-    return res.status(500).json({ 
-      error: 'Function invocation failed',
-      message: error.message 
+    console.error('DeepL API error:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+
+    return res.status(error.response?.status || 500).json({
+      error: 'Translation failed',
+      details: error.response?.data?.message || error.message,
     });
   }
 };
-
