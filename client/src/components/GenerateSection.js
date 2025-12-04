@@ -4,7 +4,9 @@ import styled from '@emotion/styled';
 import LanguageSelector from './LanguageSelector';
 import './StoryBrowser.css';
 
-const API_URL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api');
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? '/api' 
+  : (process.env.REACT_APP_API_URL || 'http://localhost:3000/api');
 
 // Styled components (copied from StoryBrowser)
 const GenerationSection = styled(motion.div)`

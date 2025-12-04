@@ -6,7 +6,9 @@ import './StoryBrowser.css';
 import ConfirmModal from './ConfirmModal';
 import EditStoryModal from './EditStoryModal';
 
-const API_URL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api');
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? '/api' 
+  : (process.env.REACT_APP_API_URL || 'http://localhost:3000/api');
 
 // Styled components
 const Container = styled(motion.div)`

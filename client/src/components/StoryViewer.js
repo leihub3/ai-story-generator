@@ -5,7 +5,9 @@ import './StoryViewer.css';
 import Select from 'react-select';
 import jsPDF from 'jspdf';
 
-const API_URL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api');
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? '/api' 
+  : (process.env.REACT_APP_API_URL || 'http://localhost:3000/api');
 
 const ViewerContainer = styled(motion.div)`
   ${props => props.isModal ? `
