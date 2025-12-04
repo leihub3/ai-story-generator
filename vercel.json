@@ -6,8 +6,16 @@
   "framework": null,
   "rewrites": [
     {
+      "source": "/api/stories/edit",
+      "destination": "/api/stories/actions"
+    },
+    {
+      "source": "/api/stories/share",
+      "destination": "/api/stories/actions"
+    },
+    {
       "source": "/api/stories/delete/:id*",
-      "destination": "/api/stories/delete"
+      "destination": "/api/stories/actions"
     },
     {
       "source": "/api/(.*)",
