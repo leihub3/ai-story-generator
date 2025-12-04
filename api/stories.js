@@ -2,10 +2,15 @@
 
 require('dotenv').config();
 
+const axios = require('axios');
+
 const {
   getAllStories,
   checkRateLimit,
 } = require('../server/src/db');
+const {
+  incrementRateLimitAfterGeneration,
+} = require('../server/src/middleware/rateLimit');
 
 // Helper to get IP address in serverless environment
 function getIpAddress(req) {
@@ -51,6 +56,109 @@ module.exports = async (req, res) => {
         remaining: info.remaining,
         limit: 3,
         resetDate: info.resetDate.toISOString(),
+      });
+    }
+
+    // Generate stories using OpenAI: POST /api/stories/search
+    if (method === 'POST' && path.endsWith('/search')) {
+      const { query, language = 'en', userTitle } = req.body || {};
+
+      if (!query) {
+        return res.status(400).json({ error: 'Search query is required' });
+      }
+
+      if (!process.env.OPENAI_API_KEY) {
+        console.error('OpenAI API key is not configured');
+        return res.status(500).json({
+          error: 'Server configuration error',
+          details: 'OpenAI API key is not configured',
+        });
+      }
+
+      const ipAddress = getIpAddress(req);
+
+      // Check rate limit before calling OpenAI
+      const limitInfo = await checkRateLimit(ipAddress, 3);
+      if (!limitInfo.allowed) {
+        return res.status(429).json({
+          error: 'Rate limit exceeded',
+          message: 'You have reached the daily limit of 3 stories. Please try again tomorrow.',
+          resetDate: limitInfo.resetDate.toISOString(),
+          remaining: 0,
+        });
+      }
+
+      // Map language codes to full names for better context
+      const languageMap = {
+        en: 'English',
+        es: 'Spanish',
+        fr: 'French',
+        de: 'German',
+        it: 'Italian',
+      };
+      const languageName = languageMap[language] || 'English';
+
+      const isMultipleStories = query.includes('---STORY_START---');
+      const maxTokens = isMultipleStories ? 4000 : 1000;
+
+      const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a creative storyteller who writes engaging children's stories in ${languageName}.
+              Write in a clear, engaging style that's appropriate for children.
+              Make sure to write the entire story in ${languageName} language.
+              ${
+                isMultipleStories
+                  ? 'When generating multiple stories, ensure each story is complete and well-formatted with the specified sections.'
+                  : ''
+              }`,
+            },
+            {
+              role: 'user',
+              content: query,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: maxTokens,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const storyContent = response.data.choices[0].message.content;
+
+      // For now, omit image generation in serverless version to keep it simple / fast
+      let imageUrl = null;
+
+      // Increment rate limit after successful generation
+      await incrementRateLimitAfterGeneration(ipAddress);
+      const updatedLimit = await checkRateLimit(ipAddress, 3);
+
+      const story = {
+        id: Date.now().toString(),
+        title: isMultipleStories ? 'Multiple Myths Collection' : userTitle || query,
+        content: storyContent,
+        language,
+        source: 'openai',
+        imageUrl,
+        createdAt: new Date().toISOString(),
+      };
+
+      res.setHeader('X-RateLimit-Remaining', updatedLimit.remaining);
+      res.setHeader('X-RateLimit-Reset', updatedLimit.resetDate.toISOString());
+      res.setHeader('X-RateLimit-Limit', 3);
+
+      return res.status(200).json({
+        query,
+        results: [story],
       });
     }
 
