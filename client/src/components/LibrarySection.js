@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import styled from '@emotion/styled';
 import LanguageSelector from './LanguageSelector';
-import { LANGUAGE_OPTIONS, LANGUAGE_OPTIONS_WITH_ALL, LANGUAGE_NAMES } from '../utils/languages';
+import { LANGUAGE_OPTIONS_WITH_ALL, LANGUAGE_NAMES } from '../utils/languages';
 import './StoryBrowser.css';
 import ConfirmModal from './ConfirmModal';
 import EditStoryModal from './EditStoryModal';
@@ -357,7 +357,6 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
   const [editedTitle, setEditedTitle] = useState('');
   const [editingStory, setEditingStory] = useState(null);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const [isTogglingShare, setIsTogglingShare] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -544,7 +543,6 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
 
   const handleToggleShare = async (storyId) => {
     try {
-      setIsTogglingShare(true);
       setError(null);
       
       const response = await fetch(`${API_URL}/stories/share?id=${storyId}`, {
@@ -571,8 +569,6 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.message);
-    } finally {
-      setIsTogglingShare(false);
     }
   };
 

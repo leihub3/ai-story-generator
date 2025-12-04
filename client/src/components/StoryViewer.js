@@ -88,37 +88,6 @@ const CloseButton = styled(motion.button)`
   }
 `;
 
-const HeaderButton = styled(motion.button)`
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: white;
-  font-size: 1.2rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.3s;
-  margin-left: 0.5rem;
-  
-  &:hover {
-    background: rgba(255, 255, 255, 0.3);
-  }
-  
-  &:focus {
-    outline: 2px solid white;
-    outline-offset: 2px;
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
 const HeaderMenuButton = styled(motion.button)`
   background: rgba(255, 255, 255, 0.2);
   border: none;
@@ -276,15 +245,6 @@ const StoryContent = styled(motion.div)`
     padding: 0.75rem 1rem;
     box-shadow: 0 2px 8px rgba(78,205,196,0.08);
   }
-`;
-
-const StoryFooter = styled(motion.div)`
-  padding: 1rem 2rem;
-  background: #f8f9fa;
-  border-top: 2px solid #eee;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 `;
 
 const LanguageTag = styled(motion.span)`
