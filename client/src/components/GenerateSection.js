@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import styled from '@emotion/styled';
 import LanguageSelector from './LanguageSelector';
+import { LANGUAGE_OPTIONS, LANGUAGE_NAMES } from '../utils/languages';
 import './StoryBrowser.css';
 
 const API_URL = process.env.NODE_ENV === 'production' 
@@ -268,6 +269,15 @@ const StoryIcon = styled(motion.span)`
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
 `;
 
+const StoryImage = styled(motion.img)`
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+`;
+
 const StoryTitle = styled(motion.h3)`
   color: #2c3e50;
   font-size: 1.2rem;
@@ -309,12 +319,26 @@ const StoryContent = styled.div`
   }
 `;
 
+const Spinner = styled.div`
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+
 const IconButton = styled(motion.button)`
   width: 32px;
   height: 32px;
   border: none;
   border-radius: 50%;
-  cursor: pointer;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   font-size: 1rem;
   display: flex;
   align-items: center;
@@ -323,8 +347,9 @@ const IconButton = styled(motion.button)`
   color: white;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  opacity: ${props => props.disabled ? 0.6 : 1};
   
-  &:hover {
+  &:hover:not(:disabled) {
     transform: scale(1.1);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
   }
@@ -337,17 +362,12 @@ const GenerateSection = ({ onSelectStory, onStoriesSaved }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isSavingAll, setIsSavingAll] = useState(false);
+  const [savingStoryId, setSavingStoryId] = useState(null);
   const [success, setSuccess] = useState('');
   const [generateMultiple, setGenerateMultiple] = useState(false);
   const [rateLimitInfo, setRateLimitInfo] = useState({ remaining: 3, resetDate: null });
 
-  const languageOptions = [
-    { value: 'en', label: 'ENG' },
-    { value: 'es', label: 'ESP' },
-    { value: 'fr', label: 'FRA' },
-    { value: 'de', label: 'DEU' },
-    { value: 'it', label: 'ITA' }
-  ];
+  const languageOptions = LANGUAGE_OPTIONS;
 
   useEffect(() => {
     if (!selectedLanguage) {
@@ -465,7 +485,11 @@ const GenerateSection = ({ onSelectStory, onStoriesSaved }) => {
   };
 
   const handleSaveStory = async (story) => {
+    if (savingStoryId === story.id) return; // Prevent multiple clicks
+    
     try {
+      setSavingStoryId(story.id);
+      setError(null);
       const response = await fetch(`${API_URL}/stories/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -484,6 +508,8 @@ const GenerateSection = ({ onSelectStory, onStoriesSaved }) => {
       }
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSavingStoryId(null);
     }
   };
 
@@ -861,9 +887,19 @@ const GenerateSection = ({ onSelectStory, onStoriesSaved }) => {
                   whileHover="hover"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <StoryIcon>
-                      {getStoryIcon(story.source)}
-                    </StoryIcon>
+                    {story.imageUrl ? (
+                      <StoryImage
+                        src={story.imageUrl}
+                        alt={story.title}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    ) : (
+                      <StoryIcon>
+                        {getStoryIcon(story.source)}
+                      </StoryIcon>
+                    )}
                     <StoryTitle>
                       {story.title}
                     </StoryTitle>
@@ -890,18 +926,19 @@ const GenerateSection = ({ onSelectStory, onStoriesSaved }) => {
                         color: '#666',
                       }}
                     >
-                      {languageOptions.find(opt => opt.value === story.language)?.label || story.language}
+                      {LANGUAGE_NAMES[story.language] || story.language}
                     </motion.span>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       {story.source === 'openai' && (
                         <IconButton
                           onClick={() => handleSaveStory(story)}
-                          aria-label="Save Story"
-                          title="Save Story"
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
+                          aria-label={savingStoryId === story.id ? "Saving..." : "Save Story"}
+                          title={savingStoryId === story.id ? "Saving..." : "Save Story"}
+                          disabled={savingStoryId === story.id}
+                          whileHover={savingStoryId !== story.id ? { scale: 1.1 } : {}}
+                          whileTap={savingStoryId !== story.id ? { scale: 0.9 } : {}}
                         >
-                          💾
+                          {savingStoryId === story.id ? <Spinner /> : '💾'}
                         </IconButton>
                       )}
                       <IconButton

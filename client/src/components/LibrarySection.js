@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import styled from '@emotion/styled';
 import LanguageSelector from './LanguageSelector';
+import { LANGUAGE_OPTIONS, LANGUAGE_OPTIONS_WITH_ALL, LANGUAGE_NAMES } from '../utils/languages';
 import './StoryBrowser.css';
 import ConfirmModal from './ConfirmModal';
 import EditStoryModal from './EditStoryModal';
@@ -14,7 +15,6 @@ const SectionContainer = styled.div`
   min-height: 100vh;
   width: 100%;
   background: #f8f9fa;
-  padding: 6rem 2rem 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -23,6 +23,11 @@ const SectionContainer = styled.div`
 const SectionContent = styled.div`
   max-width: 1200px;
   width: 100%;
+  padding: 2rem;
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
 `;
 
 const SectionTitle = styled(motion.h2)`
@@ -46,37 +51,72 @@ const SectionSubtitle = styled(motion.p)`
   font-family: 'Inter', sans-serif;
 `;
 
-const SearchControls = styled(motion.div)`
+const UnifiedSearchContainer = styled(motion.div)`
   display: flex;
-  gap: 1rem;
   align-items: center;
-  padding: 1rem 0;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
+  background: white;
+  border-radius: 50px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto 2rem;
+  position: relative;
+  transition: all 0.3s ease;
+  overflow: visible;
+  
+  &:focus-within {
+    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2);
+  }
   
   @media (max-width: 768px) {
     flex-direction: column;
+    border-radius: 25px;
+    padding: 0.75rem;
+    margin: 0 auto 1.5rem;
   }
 `;
 
 const SearchInput = styled(motion.input)`
   flex: 1;
-  min-width: 250px;
-  height: 50px;
-  padding: 0 1.5rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 25px;
-  font-size: 1rem;
+  min-width: 200px;
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 0;
+  font-size: 1.1rem;
   outline: none;
+  background: transparent;
+  color: #1a1a1a;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   transition: all 0.3s ease;
-  background: white;
-  font-family: 'Inter', sans-serif;
-
+  
+  &::placeholder {
+    color: #999;
+  }
+  
   &:focus {
-    border-color: #4ECDC4;
-    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.2);
-    outline: 2px solid #4ECDC4;
+    background: transparent;
+    outline: 2px solid #667eea;
     outline-offset: 2px;
+    border-radius: 4px;
+  }
+  
+  @media (max-width: 768px) {
+    width: 100%;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.75rem;
+  }
+`;
+
+const Separator = styled.div`
+  width: 1px;
+  height: 40px;
+  background: #e0e0e0;
+  margin: 0 0.5rem;
+  
+  @media (max-width: 768px) {
+    display: none;
   }
 `;
 
@@ -85,13 +125,18 @@ const StoryList = styled(motion.div)`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
-  padding: 1.5rem 0;
+  padding: 0;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 `;
 
 const StoryCard = styled(motion.div)`
   background: white;
   border-radius: 16px;
-  padding: 1.25rem;
+  padding: 1.5rem;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
   position: relative;
   overflow: hidden;
@@ -109,6 +154,10 @@ const StoryCard = styled(motion.div)`
     height: 4px;
     background: linear-gradient(90deg, #FF6B6B, #4ECDC4, #FFE66D);
   }
+  
+  @media (max-width: 768px) {
+    padding: 1.25rem;
+  }
 `;
 
 const StoryIcon = styled(motion.span)`
@@ -122,6 +171,15 @@ const StoryIcon = styled(motion.span)`
   justify-content: center;
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+`;
+
+const StoryImage = styled(motion.img)`
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 `;
 
 const StoryTitle = styled(motion.h3)`
@@ -212,6 +270,79 @@ const IconButton = styled(motion.button)`
   }
 `;
 
+const MenuButton = styled(motion.button)`
+  position: absolute;
+  top: -0.5rem;
+  right: -0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: #666;
+  transition: all 0.2s ease;
+  z-index: 10;
+
+  &:hover {
+    background: #f0f0f0;
+    color: #333;
+  }
+`;
+
+const MenuDropdown = styled(motion.div)`
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  z-index: 1000;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+`;
+
+const MenuItem = styled(motion.button)`
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+  color: #333;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+
+  &:first-child {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+
+  &:last-child {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+
+  ${props => props.danger && `
+    color: #e74c3c;
+    &:hover {
+      background: #fee;
+    }
+  `}
+`;
+
 const LibrarySection = ({ onSelectStory, refreshKey }) => {
   const [stories, setStories] = useState([]);
   const [allStories, setAllStories] = useState([]);
@@ -226,15 +357,11 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
   const [editedTitle, setEditedTitle] = useState('');
   const [editingStory, setEditingStory] = useState(null);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isTogglingShare, setIsTogglingShare] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const languageOptions = [
-    { value: '', label: 'All Languages' },
-    { value: 'en', label: 'English' },
-    { value: 'es', label: 'Spanish' },
-    { value: 'fr', label: 'French' },
-    { value: 'de', label: 'German' },
-    { value: 'it', label: 'Italian' }
-  ];
+  const languageOptions = LANGUAGE_OPTIONS_WITH_ALL;
 
   useEffect(() => {
     fetchSavedStories();
@@ -294,7 +421,7 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
   const confirmDeleteStory = async () => {
     if (!storyToDelete) return;
     try {
-      setIsLoading(true);
+      setIsDeleting(true);
       setError(null);
       const response = await fetch(`${API_URL}/stories/delete?id=${storyToDelete}`, {
         method: 'DELETE'
@@ -315,7 +442,7 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
       setShowConfirmModal(false);
       setStoryToDelete(null);
     } finally {
-      setIsLoading(false);
+      setIsDeleting(false);
     }
   };
 
@@ -387,6 +514,7 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
         body: JSON.stringify({
           title: editedStory.title,
           content: editedStory.content,
+          imageUrl: editedStory.imageUrl,
         })
       });
 
@@ -414,6 +542,54 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
     }
   };
 
+  const handleToggleShare = async (storyId) => {
+    try {
+      setIsTogglingShare(true);
+      setError(null);
+      
+      const response = await fetch(`${API_URL}/stories/share?id=${storyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to toggle share status');
+      }
+
+      const updatedStory = await response.json();
+      
+      setStories(prev => prev.map(story => 
+        story.id === storyId ? { ...story, isShared: updatedStory.isShared } : story
+      ));
+      setAllStories(prev => prev.map(story => 
+        story.id === storyId ? { ...story, isShared: updatedStory.isShared } : story
+      ));
+      
+      const shareStatus = updatedStory.isShared ? 'shared' : 'unshared';
+      setSuccess(`Story ${shareStatus} successfully!`);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsTogglingShare(false);
+    }
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openMenuId && !event.target.closest('[data-menu-container]')) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openMenuId]);
+
   return (
     <SectionContainer>
       <SectionContent>
@@ -433,10 +609,11 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
           Browse and manage your saved stories
         </SectionSubtitle>
 
-        <SearchControls
+        <UnifiedSearchContainer
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
+          whileFocus={{ scale: 1.01 }}
         >
           <SearchInput
             type="text"
@@ -444,17 +621,19 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search stories... 🔍"
             aria-label="Search stories"
-            whileFocus={{ scale: 1.02 }}
           />
-          <LanguageSelector
-            value={selectedLanguage}
-            onChange={handleLanguageChange}
-            options={languageOptions}
-            placeholder="All Languages"
-            variant="default"
-            tall={false}
-          />
-        </SearchControls>
+          <Separator />
+          <div style={{ minWidth: '120px', width: '120px', flexShrink: 0 }}>
+            <LanguageSelector
+              value={selectedLanguage}
+              onChange={handleLanguageChange}
+              options={languageOptions}
+              placeholder="Lang..."
+              variant="unified"
+              tall={false}
+            />
+          </div>
+        </UnifiedSearchContainer>
 
         {error && (
           <motion.div
@@ -561,10 +740,20 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
                 }}
                 whileHover="hover"
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <StoryIcon>
-                    {getStoryIcon(story.source)}
-                  </StoryIcon>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative' }}>
+                  {story.imageUrl ? (
+                    <StoryImage
+                      src={story.imageUrl}
+                      alt={story.title}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  ) : (
+                    <StoryIcon>
+                      {getStoryIcon(story.source)}
+                    </StoryIcon>
+                  )}
                   {editingTitle === story.id ? (
                     <TitleInput
                       value={editedTitle}
@@ -578,6 +767,63 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
                       {story.title}
                     </StoryTitle>
                   )}
+                  <div style={{ position: 'relative', marginLeft: 'auto' }} data-menu-container>
+                    <MenuButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(openMenuId === story.id ? null : story.id);
+                      }}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      ⋮
+                    </MenuButton>
+                    <AnimatePresence>
+                      {openMenuId === story.id && (
+                        <MenuDropdown
+                          initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <MenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleShare(story.id);
+                              setOpenMenuId(null);
+                            }}
+                            whileHover={{ x: 4 }}
+                          >
+                            <span>{story.isShared ? '🔗' : '📤'}</span>
+                            <span>{story.isShared ? 'Unshare' : 'Share'}</span>
+                          </MenuItem>
+                          <MenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditStory(story);
+                              setOpenMenuId(null);
+                            }}
+                            whileHover={{ x: 4 }}
+                          >
+                            <span>✏️</span>
+                            <span>Edit</span>
+                          </MenuItem>
+                          <MenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteStory(story.id);
+                              setOpenMenuId(null);
+                            }}
+                            danger
+                            whileHover={{ x: 4 }}
+                          >
+                            <span>🗑️</span>
+                            <span>Delete</span>
+                          </MenuItem>
+                        </MenuDropdown>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
                 <StoryContent>
                   {story.content.split('\n').map((line, index) => (
@@ -612,8 +858,24 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {languageOptions.find(opt => opt.value === story.language)?.label || story.language}
+                      {LANGUAGE_NAMES[story.language] || story.language}
                     </motion.span>
+                    {story.isShared && (
+                      <motion.span
+                        style={{
+                          background: '#4CAF50',
+                          color: 'white',
+                          borderRadius: 12,
+                          padding: '0.25rem 0.75rem',
+                          fontSize: '0.9rem',
+                          whiteSpace: 'nowrap',
+                          fontWeight: 600,
+                        }}
+                        title="This story is publicly shared"
+                      >
+                        🔗 Shared
+                      </motion.span>
+                    )}
                     {story.tag && (
                       <motion.span
                         style={{
@@ -647,26 +909,6 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
                     >
                       📖
                     </IconButton>
-                    <IconButton
-                      onClick={() => handleEditStory(story)}
-                      aria-label="Edit Story"
-                      title="Edit Story"
-                      style={{ background: '#FFA500' }}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      ✏️
-                    </IconButton>
-                    <IconButton
-                      onClick={() => handleDeleteStory(story.id)}
-                      aria-label="Delete Story"
-                      title="Delete Story"
-                      delete
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      🗑️
-                    </IconButton>
                   </div>
                 </div>
               </StoryCard>
@@ -681,6 +923,7 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
             message="Are you sure you want to delete this story?"
             onCancel={cancelDeleteStory}
             onConfirm={confirmDeleteStory}
+            isDeleting={isDeleting}
           />
         )}
         {editingStory && (

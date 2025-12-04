@@ -1,8 +1,8 @@
-// Vercel serverless function for PATCH /api/stories/edit endpoint
+// Vercel serverless function for PATCH /api/stories/share endpoint
 
 require('dotenv').config();
 
-const { updateStory } = require('../../server/src/db');
+const { toggleShareStory } = require('../../server/src/db');
 
 // Helper function to set CORS headers
 function setCorsHeaders(res) {
@@ -18,17 +18,16 @@ module.exports = async (req, res) => {
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    console.log('OPTIONS preflight request received for EDIT endpoint');
+    console.log('OPTIONS preflight request received for SHARE endpoint');
     return res.status(200).end();
   }
 
   const { method, url } = req;
 
-  console.log('=== PATCH /api/stories/edit Handler Called ===');
+  console.log('=== PATCH /api/stories/share Handler Called ===');
   console.log('Method:', method);
   console.log('URL:', url);
   console.log('Query:', req.query);
-  console.log('Body:', req.body);
 
   if (method !== 'PATCH') {
     res.setHeader('Allow', ['PATCH', 'OPTIONS']);
@@ -50,28 +49,16 @@ module.exports = async (req, res) => {
     });
   }
 
-  // Extract title, content, and imageUrl from request body
-  const { title, content, imageUrl } = req.body || {};
-
-  if (!title && content === undefined && imageUrl === undefined) {
-    return res.status(400).json({ error: 'At least title, content, or imageUrl must be provided' });
-  }
-
-  const updates = {};
-  if (title !== undefined) updates.title = title;
-  if (content !== undefined) updates.content = content;
-  if (imageUrl !== undefined) updates.imageUrl = imageUrl;
-
   try {
-    console.log('Attempting to update story with ID:', id, 'Updates:', updates);
-    const updatedStory = await updateStory(id, updates);
+    console.log('Attempting to toggle share status for story with ID:', id);
+    const updatedStory = await toggleShareStory(id);
 
     if (!updatedStory) {
       console.log('Story not found:', id);
       return res.status(404).json({ error: 'Story not found' });
     }
 
-    console.log('Story updated successfully:', id);
+    console.log('Story share status toggled successfully:', id, 'is_shared:', updatedStory.is_shared);
 
     // Format response
     const formattedStory = {
@@ -82,14 +69,15 @@ module.exports = async (req, res) => {
       source: updatedStory.source,
       tag: updatedStory.tag,
       imageUrl: updatedStory.image_url,
+      isShared: updatedStory.is_shared,
       createdAt: updatedStory.created_at,
     };
 
     return res.status(200).json(formattedStory);
   } catch (error) {
-    console.error('Edit endpoint error:', error);
+    console.error('Share endpoint error:', error);
     return res.status(500).json({
-      error: 'Failed to update story',
+      error: 'Failed to toggle share status',
       details: error.message,
     });
   }

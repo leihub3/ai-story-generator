@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { motion, AnimatePresence } from 'framer-motion';
 import styled from '@emotion/styled';
+import { LANGUAGE_OPTIONS, LANGUAGE_OPTIONS_WITH_ALL, LANGUAGE_NAMES } from '../utils/languages';
 import './StoryBrowser.css';
 import ConfirmModal from './ConfirmModal';
 import EditStoryModal from './EditStoryModal';
@@ -154,6 +155,15 @@ const StoryIcon = styled(motion.span)`
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
 `;
 
+const StoryImage = styled(motion.img)`
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+`;
+
 const StoryTitle = styled(motion.h3)`
   color: #2c3e50;
   font-size: 1.2rem;
@@ -223,12 +233,26 @@ const StoryPreview = styled(motion.p)`
   font-size: 1.1rem;
 `;
 
+const Spinner = styled.div`
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+
 const IconButton = styled(motion.button)`
   width: 32px;
   height: 32px;
   border: none;
   border-radius: 50%;
-  cursor: pointer;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   font-size: 1rem;
   display: flex;
   align-items: center;
@@ -237,8 +261,9 @@ const IconButton = styled(motion.button)`
   color: white;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  opacity: ${props => props.disabled ? 0.6 : 1};
   
-  &:hover {
+  &:hover:not(:disabled) {
     transform: scale(1.1);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
   }
@@ -246,6 +271,79 @@ const IconButton = styled(motion.button)`
   &:active {
     transform: scale(0.95);
   }
+`;
+
+const MenuButton = styled(motion.button)`
+  position: absolute;
+  top: -0.5rem;
+  right: -0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: #666;
+  transition: all 0.2s ease;
+  z-index: 10;
+
+  &:hover {
+    background: #f0f0f0;
+    color: #333;
+  }
+`;
+
+const MenuDropdown = styled(motion.div)`
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  z-index: 1000;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+`;
+
+const MenuItem = styled(motion.button)`
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+  color: #333;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+
+  &:first-child {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+
+  &:last-child {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+
+  ${props => props.danger && `
+    color: #e74c3c;
+    &:hover {
+      background: #fee;
+    }
+  `}
 `;
 
 const SearchControls = styled(motion.div)`
@@ -685,15 +783,12 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
   const [success, setSuccess] = useState('');
   const [editingStory, setEditingStory] = useState(null);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isTogglingShare, setIsTogglingShare] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [savingStoryId, setSavingStoryId] = useState(null);
 
-  const languageOptions = [
-    { value: '', label: 'All Languages' },
-    { value: 'en', label: 'English' },
-    { value: 'es', label: 'Spanish' },
-    { value: 'fr', label: 'French' },
-    { value: 'de', label: 'German' },
-    { value: 'it', label: 'Italian' }
-  ];
+  const languageOptions = viewMode === 'saved' ? LANGUAGE_OPTIONS_WITH_ALL : LANGUAGE_OPTIONS;
 
   useEffect(() => {
     if (initialViewMode === 'saved') {
@@ -703,7 +798,7 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
       setStories([]);
       // Set default language to English for generation
       if (!selectedLanguage) {
-        setSelectedLanguage(languageOptions.find(opt => opt.value === 'en') || languageOptions[1]);
+        setSelectedLanguage(LANGUAGE_OPTIONS.find(opt => opt.value === 'en') || LANGUAGE_OPTIONS[0]);
       }
     }
   }, []);
@@ -719,7 +814,7 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
       setError(null);
       // Set default language to English for generation if not set
       if (!selectedLanguage) {
-        setSelectedLanguage(languageOptions.find(opt => opt.value === 'en') || languageOptions[1]);
+        setSelectedLanguage(LANGUAGE_OPTIONS.find(opt => opt.value === 'en') || LANGUAGE_OPTIONS[0]);
       }
     }
   }, [initialViewMode]);
@@ -840,6 +935,20 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
     }
   }, [searchQuery, selectedLanguage, viewMode]);
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openMenuId && !event.target.closest('[data-menu-container]')) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openMenuId]);
+
   const handleLanguageChange = (selected) => {
     setSelectedLanguage(selected);
   };
@@ -886,7 +995,11 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
   };
 
   const handleSaveStory = async (story) => {
+    if (savingStoryId === story.id) return; // Prevent multiple clicks
+    
     try {
+      setSavingStoryId(story.id);
+      setError(null);
       const response = await fetch(`${API_URL}/stories/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -917,7 +1030,7 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
   const confirmDeleteStory = async () => {
     if (!storyToDelete) return;
     try {
-      setIsLoading(true);
+      setIsDeleting(true);
       setError(null);
       const response = await fetch(`${API_URL}/stories/delete?id=${storyToDelete}`, {
         method: 'DELETE'
@@ -938,7 +1051,7 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
       setShowConfirmModal(false);
       setStoryToDelete(null);
     } finally {
-      setIsLoading(false);
+      setIsDeleting(false);
     }
   };
 
@@ -1010,6 +1123,7 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
         body: JSON.stringify({
           title: editedStory.title,
           content: editedStory.content,
+          imageUrl: editedStory.imageUrl,
         })
       });
 
@@ -1031,6 +1145,37 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
       setError(err.message);
     } finally {
       setIsSavingEdit(false);
+    }
+  };
+
+  const handleToggleShare = async (storyId) => {
+    try {
+      setIsTogglingShare(true);
+      setError(null);
+      
+      const response = await fetch(`${API_URL}/stories/share?id=${storyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to toggle share status');
+      }
+
+      const updatedStory = await response.json();
+      
+      setStories(prev => prev.map(story => 
+        story.id === storyId ? { ...story, isShared: updatedStory.isShared } : story
+      ));
+      
+      const shareStatus = updatedStory.isShared ? 'shared' : 'unshared';
+      setSuccess(`Story ${shareStatus} successfully!`);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsTogglingShare(false);
     }
   };
 
@@ -1418,19 +1563,29 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                         layout
                       >
                         <div className="story-header">
-                          <StoryIcon
-                            variants={{
-                              hover: {
-                                rotate: [0, -10, 10, -10, 0],
-                                transition: {
-                                  duration: 0.5
+                          {story.imageUrl ? (
+                            <StoryImage
+                              src={story.imageUrl}
+                              alt={story.title}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ duration: 0.3 }}
+                            />
+                          ) : (
+                            <StoryIcon
+                              variants={{
+                                hover: {
+                                  rotate: [0, -10, 10, -10, 0],
+                                  transition: {
+                                    duration: 0.5
+                                  }
                                 }
-                              }
-                            }}
-                            whileHover="hover"
-                          >
-                            {getStoryIcon(story.source)}
-                          </StoryIcon>
+                              }}
+                              whileHover="hover"
+                            >
+                              {getStoryIcon(story.source)}
+                            </StoryIcon>
+                          )}
                           {editingTitle === story.id ? (
                             <TitleInput
                               value={editedTitle}
@@ -1443,6 +1598,65 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                             <StoryTitle onClick={() => handleTitleClick(story.id, story.title)}>
                               {story.title}
                             </StoryTitle>
+                          )}
+                          {viewMode === 'saved' && (
+                            <div style={{ position: 'relative' }} data-menu-container>
+                              <MenuButton
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuId(openMenuId === story.id ? null : story.id);
+                                }}
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                              >
+                                ⋮
+                              </MenuButton>
+                              <AnimatePresence>
+                                {openMenuId === story.id && (
+                                  <MenuDropdown
+                                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <MenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleShare(story.id);
+                                        setOpenMenuId(null);
+                                      }}
+                                      whileHover={{ x: 4 }}
+                                    >
+                                      <span>{story.isShared ? '🔗' : '📤'}</span>
+                                      <span>{story.isShared ? 'Unshare' : 'Share'}</span>
+                                    </MenuItem>
+                                    <MenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditStory(story);
+                                        setOpenMenuId(null);
+                                      }}
+                                      whileHover={{ x: 4 }}
+                                    >
+                                      <span>✏️</span>
+                                      <span>Edit</span>
+                                    </MenuItem>
+                                    <MenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteStory(story.id);
+                                        setOpenMenuId(null);
+                                      }}
+                                      danger
+                                      whileHover={{ x: 4 }}
+                                    >
+                                      <span>🗑️</span>
+                                      <span>Delete</span>
+                                    </MenuItem>
+                                  </MenuDropdown>
+                                )}
+                              </AnimatePresence>
+                            </div>
                           )}
                         </div>
                         <StoryContent>
@@ -1464,8 +1678,24 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                               whileHover={{ scale: 1.1 }}
                               style={{ whiteSpace: 'nowrap' }}
                             >
-                              {languageOptions.find(opt => opt.value === story.language)?.label || story.language}
+                              {LANGUAGE_NAMES[story.language] || story.language}
                             </motion.span>
+                            {story.isShared && (
+                              <motion.span
+                                style={{ 
+                                  background: '#4CAF50', 
+                                  color: 'white', 
+                                  borderRadius: 12, 
+                                  padding: '0.25rem 0.75rem', 
+                                  fontSize: '0.9rem',
+                                  whiteSpace: 'nowrap',
+                                  fontWeight: 600,
+                                }}
+                                title="This story is publicly shared"
+                              >
+                                🔗 Shared
+                              </motion.span>
+                            )}
                             {story.tag && (
                               <motion.span
                                 className="story-tag"
@@ -1632,19 +1862,29 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                     layout
                   >
                     <div className="story-header">
-                      <StoryIcon
-                        variants={{
-                          hover: {
-                            rotate: [0, -10, 10, -10, 0],
-                            transition: {
-                              duration: 0.5
+                      {story.imageUrl ? (
+                        <StoryImage
+                          src={story.imageUrl}
+                          alt={story.title}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      ) : (
+                        <StoryIcon
+                          variants={{
+                            hover: {
+                              rotate: [0, -10, 10, -10, 0],
+                              transition: {
+                                duration: 0.5
+                              }
                             }
-                          }
-                        }}
-                        whileHover="hover"
-                      >
-                        {getStoryIcon(story.source)}
-                      </StoryIcon>
+                          }}
+                          whileHover="hover"
+                        >
+                          {getStoryIcon(story.source)}
+                        </StoryIcon>
+                      )}
                       {editingTitle === story.id ? (
                         <TitleInput
                           value={editedTitle}
@@ -1678,8 +1918,24 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                           whileHover={{ scale: 1.1 }}
                           style={{ whiteSpace: 'nowrap' }}
                         >
-                          {languageOptions.find(opt => opt.value === story.language)?.label || story.language}
+                          {LANGUAGE_NAMES[story.language] || story.language}
                         </motion.span>
+                        {story.isShared && (
+                          <motion.span
+                            style={{ 
+                              background: '#4CAF50', 
+                              color: 'white', 
+                              borderRadius: 12, 
+                              padding: '0.25rem 0.75rem', 
+                              fontSize: '0.9rem',
+                              whiteSpace: 'nowrap',
+                              fontWeight: 600,
+                            }}
+                            title="This story is publicly shared"
+                          >
+                            🔗 Shared
+                          </motion.span>
+                        )}
                         {story.tag && (
                           <motion.span
                             className="story-tag"
@@ -1704,11 +1960,12 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                         {viewMode === 'new' && story.source === 'openai' && (
                           <IconButton
                             onClick={() => handleSaveStory(story)}
-                            title="Save Story"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
+                            title={savingStoryId === story.id ? "Saving..." : "Save Story"}
+                            disabled={savingStoryId === story.id}
+                            whileHover={savingStoryId !== story.id ? { scale: 1.1 } : {}}
+                            whileTap={savingStoryId !== story.id ? { scale: 0.9 } : {}}
                           >
-                            💾
+                            {savingStoryId === story.id ? <Spinner /> : '💾'}
                           </IconButton>
                         )}
                         <IconButton
@@ -1719,28 +1976,6 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                         >
                           📖
                         </IconButton>
-                        {viewMode === 'saved' && (
-                          <>
-                            <IconButton
-                              onClick={() => handleEditStory(story)}
-                              title="Edit Story"
-                              style={{ background: '#FFA500' }}
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                            >
-                              ✏️
-                            </IconButton>
-                            <IconButton
-                              onClick={() => handleDeleteStory(story.id)}
-                              title="Delete Story"
-                              delete
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                            >
-                              🗑️
-                            </IconButton>
-                          </>
-                        )}
                       </div>
                     </div>
                   </StoryCard>
@@ -1756,6 +1991,7 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
             message="¿Estás seguro de que deseas eliminar esta historia?"
             onCancel={cancelDeleteStory}
             onConfirm={confirmDeleteStory}
+            isDeleting={isDeleting}
           />
         )}
         {editingStory && (

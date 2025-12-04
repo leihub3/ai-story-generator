@@ -25,7 +25,8 @@ const ModalBox = styled(motion.div)`
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   
   &:focus {
     outline: none;
@@ -129,11 +130,59 @@ const SaveButton = styled(ModalButton)`
   }
 `;
 
+const GenerateImageButton = styled(ModalButton)`
+  background: #667eea;
+  color: white;
+  &:hover:not(:disabled) {
+    background: #5568d3;
+  }
+`;
+
+const StoryImage = styled(motion.img)`
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin: 0 auto;
+  display: block;
+`;
+
+const ImageContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+`;
+
+const Spinner = styled.div`
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+  margin-right: 0.5rem;
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? '/api' 
+  : (process.env.REACT_APP_API_URL || 'http://localhost:3000/api');
+
 const EditStoryModal = ({ story, onCancel, onSave, isSaving }) => {
   const modalRef = useRef(null);
   const titleInputRef = useRef(null);
   const [editedTitle, setEditedTitle] = useState(story?.title || '');
   const [editedContent, setEditedContent] = useState(story?.content || '');
+  const [currentImageUrl, setCurrentImageUrl] = useState(story?.imageUrl || null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imageError, setImageError] = useState(null);
 
   useEffect(() => {
     if (titleInputRef.current) {
@@ -160,7 +209,36 @@ const EditStoryModal = ({ story, onCancel, onSave, isSaving }) => {
         ...story,
         title: editedTitle.trim(),
         content: editedContent.trim(),
+        imageUrl: currentImageUrl,
       });
+    }
+  };
+
+  const handleGenerateImage = async () => {
+    if (!story?.id) return;
+    
+    try {
+      setIsGeneratingImage(true);
+      setImageError(null);
+      
+      const response = await fetch(`${API_URL}/stories/generate-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storyId: story.id }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate image');
+      }
+
+      const updatedStory = await response.json();
+      setCurrentImageUrl(updatedStory.imageUrl);
+    } catch (err) {
+      console.error('Error generating image:', err);
+      setImageError(err.message);
+    } finally {
+      setIsGeneratingImage(false);
     }
   };
 
@@ -183,6 +261,74 @@ const EditStoryModal = ({ story, onCancel, onSave, isSaving }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <Title id="edit-modal-title">Edit Story</Title>
+        
+        {/* Image Section */}
+        {(currentImageUrl || story?.imageUrl) && (
+          <FormGroup>
+            <Label>Current Image</Label>
+            <ImageContainer>
+              <StoryImage
+                src={currentImageUrl || story?.imageUrl}
+                alt={editedTitle || story?.title}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                onError={() => setImageError('Failed to load image')}
+              />
+              <GenerateImageButton
+                onClick={handleGenerateImage}
+                disabled={isGeneratingImage || isSaving}
+                whileHover={!isGeneratingImage && !isSaving ? { scale: 1.05 } : {}}
+                whileTap={!isGeneratingImage && !isSaving ? { scale: 0.95 } : {}}
+                aria-label="Generate new image"
+              >
+                {isGeneratingImage ? (
+                  <>
+                    <Spinner />
+                    Generating...
+                  </>
+                ) : (
+                  '🎨 Generate New Image'
+                )}
+              </GenerateImageButton>
+              {imageError && (
+                <div style={{ color: '#FF6B6B', fontSize: '0.9rem', textAlign: 'center' }}>
+                  {imageError}
+                </div>
+              )}
+            </ImageContainer>
+          </FormGroup>
+        )}
+        
+        {!currentImageUrl && !story?.imageUrl && (
+          <FormGroup>
+            <Label>Image</Label>
+            <ImageContainer>
+              <GenerateImageButton
+                onClick={handleGenerateImage}
+                disabled={isGeneratingImage || isSaving}
+                whileHover={!isGeneratingImage && !isSaving ? { scale: 1.05 } : {}}
+                whileTap={!isGeneratingImage && !isSaving ? { scale: 0.95 } : {}}
+                aria-label="Generate image"
+              >
+                {isGeneratingImage ? (
+                  <>
+                    <Spinner />
+                    Generating...
+                  </>
+                ) : (
+                  '🎨 Generate Image with AI'
+                )}
+              </GenerateImageButton>
+              {imageError && (
+                <div style={{ color: '#FF6B6B', fontSize: '0.9rem', textAlign: 'center' }}>
+                  {imageError}
+                </div>
+              )}
+            </ImageContainer>
+          </FormGroup>
+        )}
+        
         <FormGroup>
           <Label htmlFor="edit-title">Title</Label>
           <Input

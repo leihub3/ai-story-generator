@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import styled from '@emotion/styled';
 import LandingSection from './LandingSection';
 import GenerateSection from './GenerateSection';
@@ -36,19 +36,35 @@ const Logo = styled(motion.div)`
   font-size: 1.5rem;
   font-weight: 800;
   font-family: 'Poppins', 'Inter', sans-serif;
-  background: ${props => props.scrolled 
-    ? 'linear-gradient(135deg, #667eea, #764ba2, #f093fb)' 
-    : 'linear-gradient(135deg, #667eea, #764ba2, #f093fb)'};
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   cursor: pointer;
-  filter: ${props => props.scrolled ? 'none' : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))'};
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  
+  img {
+    flex-shrink: 0;
+    display: block;
+  }
+  
+  span {
+    background: ${props => props.scrolled 
+      ? 'linear-gradient(135deg, #667eea, #764ba2, #f093fb)' 
+      : 'linear-gradient(135deg, #667eea, #764ba2, #f093fb)'};
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: ${props => props.scrolled ? 'none' : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))'};
+  }
   
   &:focus {
     outline: 2px solid ${props => props.scrolled ? '#667eea' : 'white'};
     outline-offset: 4px;
     border-radius: 4px;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 1.2rem;
   }
 `;
 
@@ -58,7 +74,95 @@ const NavLinks = styled.div`
   align-items: center;
   
   @media (max-width: 768px) {
-    gap: 1rem;
+    display: none;
+  }
+`;
+
+const HamburgerButton = styled(motion.button)`
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  color: ${props => props.scrolled ? '#1a1a1a' : 'white'};
+  z-index: 1001;
+  
+  @media (max-width: 768px) {
+    display: flex;
+  }
+  
+  &:focus {
+    outline: 2px solid ${props => props.scrolled ? '#667eea' : 'white'};
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+`;
+
+const HamburgerLine = styled(motion.span)`
+  width: 24px;
+  height: 3px;
+  background: ${props => props.scrolled ? '#1a1a1a' : 'white'};
+  border-radius: 2px;
+  transition: all 0.3s ease;
+`;
+
+const MobileMenu = styled(motion.div)`
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+  padding-top: 80px;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  
+  @media (max-width: 768px) {
+    display: flex;
+  }
+`;
+
+const MobileNavLink = styled(motion.button)`
+  background: none;
+  border: none;
+  color: #1a1a1a;
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  width: 200px;
+  text-align: center;
+  
+  &:hover {
+    background: rgba(102, 126, 234, 0.1);
+  }
+  
+  &.active {
+    color: #667eea;
+  }
+  
+  &.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 3px;
+    background: #667eea;
+    border-radius: 2px;
   }
 `;
 
@@ -117,6 +221,7 @@ const SinglePageApp = () => {
   const [activeSection, setActiveSection] = useState('landing');
   const [selectedStory, setSelectedStory] = useState(null);
   const [libraryRefreshKey, setLibraryRefreshKey] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const landingRef = useRef(null);
   const generateRef = useRef(null);
@@ -163,6 +268,7 @@ const SinglePageApp = () => {
         behavior: 'smooth',
         block: 'start'
       });
+      setMobileMenuOpen(false); // Close mobile menu after navigation
     }
   };
 
@@ -219,7 +325,17 @@ const SinglePageApp = () => {
             whileHover={{ scale: 1.05 }} 
             whileTap={{ scale: 0.95 }}
           >
-            🤖 AI Story Creator
+            <img 
+              src="/app_icon.png" 
+              alt="AI Story Creator" 
+              style={{ 
+                width: '48px', 
+                height: '48px', 
+                objectFit: 'contain',
+                display: 'block'
+              }} 
+            />
+            <span>AI Story Creator</span>
           </Logo>
           <NavLinks>
             <NavLink 
@@ -250,8 +366,72 @@ const SinglePageApp = () => {
               Library
             </NavLink>
           </NavLinks>
+          <HamburgerButton
+            scrolled={scrolled}
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+            whileTap={{ scale: 0.95 }}
+          >
+            <HamburgerLine
+              scrolled={scrolled}
+              animate={mobileMenuOpen ? { rotate: 45, y: 7 } : { rotate: 0, y: 0 }}
+            />
+            <HamburgerLine
+              scrolled={scrolled}
+              animate={mobileMenuOpen ? { opacity: 0 } : { opacity: 1 }}
+            />
+            <HamburgerLine
+              scrolled={scrolled}
+              animate={mobileMenuOpen ? { rotate: -45, y: -7 } : { rotate: 0, y: 0 }}
+            />
+          </HamburgerButton>
         </NavContent>
       </Navbar>
+
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <MobileMenu
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <MobileNavLink
+              className={activeSection === 'landing' ? 'active' : ''}
+              onClick={() => scrollToSection('landing')}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+            >
+              Home
+            </MobileNavLink>
+            <MobileNavLink
+              className={activeSection === 'generate' ? 'active' : ''}
+              onClick={() => scrollToSection('generate')}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              Generate
+            </MobileNavLink>
+            <MobileNavLink
+              className={activeSection === 'library' ? 'active' : ''}
+              onClick={() => scrollToSection('library')}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              Library
+            </MobileNavLink>
+          </MobileMenu>
+        )}
+      </AnimatePresence>
 
       <Section ref={landingRef} id="landing">
         <LandingSection onScrollToGenerate={() => scrollToSection('generate')} />

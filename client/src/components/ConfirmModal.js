@@ -71,12 +71,32 @@ const CancelButton = styled(ModalButton)`
 const DeleteButton = styled(ModalButton)`
   background: #4ECDC4;
   color: white;
-  &:hover {
+  &:hover:not(:disabled) {
     background: #3dbeb6;
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 `;
 
-const ConfirmModal = ({ message, onCancel, onConfirm }) => {
+const Spinner = styled.div`
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+  margin-right: 0.5rem;
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+
+const ConfirmModal = ({ message, onCancel, onConfirm, isDeleting = false }) => {
   const modalRef = useRef(null);
   const cancelButtonRef = useRef(null);
   const deleteButtonRef = useRef(null);
@@ -89,7 +109,7 @@ const ConfirmModal = ({ message, onCancel, onConfirm }) => {
 
     // Handle Escape key
     const handleEscape = (e) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !isDeleting) {
         onCancel();
       }
     };
@@ -126,14 +146,14 @@ const ConfirmModal = ({ message, onCancel, onConfirm }) => {
       document.removeEventListener('keydown', handleEscape);
       document.removeEventListener('keydown', handleTab);
     };
-  }, [onCancel]);
+  }, [onCancel, isDeleting]);
 
   return (
     <Overlay
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={onCancel}
+      onClick={isDeleting ? undefined : onCancel}
     >
       <ModalBox
         ref={modalRef}
@@ -146,25 +166,36 @@ const ConfirmModal = ({ message, onCancel, onConfirm }) => {
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <Message id="confirm-modal-message">{message}</Message>
+        <Message id="confirm-modal-message">
+          {isDeleting ? 'Deleting...' : message}
+        </Message>
         <ButtonRow>
           <CancelButton
             ref={cancelButtonRef}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onCancel}
+            whileHover={!isDeleting ? { scale: 1.05 } : {}}
+            whileTap={!isDeleting ? { scale: 0.95 } : {}}
+            onClick={isDeleting ? undefined : onCancel}
+            disabled={isDeleting}
             aria-label="Cancel deletion"
           >
             Cancel
           </CancelButton>
           <DeleteButton
             ref={deleteButtonRef}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={!isDeleting ? { scale: 1.05 } : {}}
+            whileTap={!isDeleting ? { scale: 0.95 } : {}}
             onClick={onConfirm}
+            disabled={isDeleting}
             aria-label="Confirm deletion"
           >
-            Delete
+            {isDeleting ? (
+              <>
+                <Spinner />
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
           </DeleteButton>
         </ButtonRow>
       </ModalBox>

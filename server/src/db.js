@@ -69,9 +69,9 @@ async function getAllStories(ipAddress = null) {
     let params = [];
     
     if (ipAddress) {
-      // Show stories for current IP OR migrated stories (for local development)
+      // Show stories for current IP OR migrated stories OR shared stories from all users
       queryText = `SELECT * FROM stories 
-                   WHERE ip_address = $1 OR ip_address = 'migrated' 
+                   WHERE ip_address = $1 OR ip_address = 'migrated' OR is_shared = true
                    ORDER BY created_at DESC`;
       params = [ipAddress];
     }
@@ -192,6 +192,10 @@ async function updateStory(storyId, updates) {
       fields.push(`tag = $${paramIndex++}`);
       values.push(updates.tag);
     }
+    if (updates.is_shared !== undefined) {
+      fields.push(`is_shared = $${paramIndex++}`);
+      values.push(updates.is_shared);
+    }
     
     if (fields.length === 0) {
       return await getStoryById(storyId);
@@ -204,6 +208,33 @@ async function updateStory(storyId, updates) {
     return result.rows[0] || null;
   } catch (error) {
     console.error('Error updating story:', error);
+    throw error;
+  }
+}
+
+/**
+ * Toggle share status of a story
+ * @param {string} storyId - Story UUID
+ * @returns {Promise<Object|null>} Updated story or null
+ */
+async function toggleShareStory(storyId) {
+  try {
+    // First get the current story to check its share status
+    const story = await getStoryById(storyId);
+    if (!story) {
+      return null;
+    }
+    
+    // Toggle the is_shared field
+    const newShareStatus = !story.is_shared;
+    const result = await query(
+      'UPDATE stories SET is_shared = $1 WHERE id = $2 RETURNING *',
+      [newShareStatus, storyId]
+    );
+    
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error('Error toggling share status:', error);
     throw error;
   }
 }
@@ -354,6 +385,7 @@ module.exports = {
   saveStories,
   deleteStory,
   updateStory,
+  toggleShareStory,
   searchStories,
   getRateLimit,
   incrementRateLimit,

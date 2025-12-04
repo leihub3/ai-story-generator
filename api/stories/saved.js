@@ -45,6 +45,7 @@ module.exports = async (req, res) => {
       source: story.source,
       tag: story.tag,
       imageUrl: story.image_url,
+      isShared: story.is_shared || false,
       createdAt: story.created_at,
     }));
 

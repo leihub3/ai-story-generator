@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import styled from '@emotion/styled';
 import './StoryViewer.css';
 import Select from 'react-select';
@@ -119,6 +119,90 @@ const HeaderButton = styled(motion.button)`
   }
 `;
 
+const HeaderMenuButton = styled(motion.button)`
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  position: relative;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+  }
+  
+  &:focus {
+    outline: 2px solid white;
+    outline-offset: 2px;
+  }
+`;
+
+const HeaderMenuDropdown = styled(motion.div)`
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  z-index: 1002;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  padding: 0.5rem;
+`;
+
+const HeaderMenuItem = styled(motion.button)`
+  width: 100%;
+  background: none;
+  border: none;
+  color: #2c3e50;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.2s ease;
+  font-family: 'Inter', sans-serif;
+  
+  &:hover {
+    background: #f0f0f0;
+  }
+  
+  &:focus {
+    outline: 2px solid #4ECDC4;
+    outline-offset: -2px;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const StoryHeaderIcon = styled(motion.img)`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  margin-right: 0.75rem;
+`;
+
 const StoryImage = styled(motion.img)`
   width: 300px;
   max-width: 40%;
@@ -146,7 +230,12 @@ const StoryContent = styled(motion.div)`
   line-height: 1.8;
   color: #2c3e50;
   font-family: 'Comic Sans MS', cursive;
-  padding-bottom: 6rem;
+  padding-bottom: 5rem;
+  
+  @media (max-width: 768px) {
+    padding: 1.5rem;
+    padding-bottom: 4.5rem;
+  }
   
   /* Clear float after image */
   &::after {
@@ -200,27 +289,41 @@ const StoryFooter = styled(motion.div)`
 
 const LanguageTag = styled(motion.span)`
   background: #e9ecef;
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.75rem;
   border-radius: 20px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #666;
+  flex-shrink: 0;
+  white-space: nowrap;
+  order: -1;
 `;
 
 const ControlsContainer = styled(motion.div)`
   position: sticky;
-  bottom: 0;
+  bottom: 1rem;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 1rem;
+  gap: 0.3rem;
   z-index: 1001;
   background: rgba(255, 255, 255, 0.9);
-  padding: 0.75rem 1.5rem;
+  padding: 0.4rem 0.75rem;
   border-radius: 30px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(5px);
   align-items: center;
   justify-content: center;
+  width: fit-content;
+  margin: 0 auto;
+  
+  @media (max-width: 768px) {
+    padding: 0.35rem 0.6rem;
+    gap: 0.3rem;
+    flex-wrap: nowrap;
+    width: fit-content;
+    justify-content: center;
+    bottom: 0.75rem;
+  }
 `;
 
 const ControlButton = styled(motion.button)`
@@ -236,6 +339,13 @@ const ControlButton = styled(motion.button)`
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+  flex-shrink: 0;
+  
+  @media (max-width: 768px) {
+    width: 45px;
+    height: 45px;
+    font-size: 1.3rem;
+  }
   
   &:hover {
     background: #3dbeb6;
@@ -260,6 +370,10 @@ const SpeedControl = styled(motion.div)`
   align-items: center;
   gap: 0.5rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  
+  @media (max-width: 768px) {
+    display: none;
+  }
 `;
 
 const SpeedButton = styled(motion.button)`
@@ -285,6 +399,105 @@ const SpeedButton = styled(motion.button)`
 const VoiceSelectWrapper = styled.div`
   width: 220px;
   margin-right: 1rem;
+  
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+const MenuButton = styled(motion.button)`
+  display: none;
+  background: #4ECDC4;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: white;
+  transition: all 0.2s ease;
+  z-index: 10;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(78, 205, 196, 0.3);
+  order: -2;
+
+  @media (max-width: 768px) {
+    display: flex;
+  }
+
+  &:hover {
+    background: #3dbeb6;
+    transform: scale(1.1);
+  }
+  
+  &:focus {
+    outline: 2px solid #2c3e50;
+    outline-offset: 2px;
+  }
+`;
+
+const MenuDropdown = styled(motion.div)`
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 280px;
+  max-width: calc(100vw - 4rem);
+  z-index: 1002;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  padding: 1rem;
+  display: none;
+  
+  @media (max-width: 768px) {
+    display: block;
+  }
+`;
+
+const MenuSection = styled.div`
+  margin-bottom: 1rem;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const MenuSectionLabel = styled.div`
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const MobileVoiceSelectWrapper = styled.div`
+  width: 100%;
+  margin-bottom: 1rem;
+  
+  @media (min-width: 769px) {
+    display: none;
+  }
+`;
+
+const MobileSpeedControl = styled(motion.div)`
+  background: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  
+  @media (min-width: 769px) {
+    display: none;
+  }
 `;
 
 const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
@@ -295,8 +508,12 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
   const [selectedVoice, setSelectedVoice] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const paragraphRefs = useRef([]);
   const storyContentRef = useRef(null);
+  const menuRef = useRef(null);
+  const headerMenuRef = useRef(null);
 
   // Fullscreen API handlers
   useEffect(() => {
@@ -351,6 +568,23 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
     }
   };
 
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (mobileMenuOpen && menuRef.current && !menuRef.current.contains(event.target)) {
+        setMobileMenuOpen(false);
+      }
+      if (headerMenuOpen && headerMenuRef.current && !headerMenuRef.current.contains(event.target)) {
+        setHeaderMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [mobileMenuOpen, headerMenuOpen]);
+
   // Auto-scroll to paragraph
   const scrollToParagraph = useCallback((index) => {
     if (paragraphRefs.current[index] && isPlaying) {
@@ -388,16 +622,44 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
       const savedVoiceName = localStorage.getItem('selectedVoiceName');
       const populateVoices = () => {
         const allVoices = window.speechSynthesis.getVoices();
-        const langCode = (story.language || 'en').split('-')[0];
-        const filtered = allVoices.filter(v => v.lang && v.lang.startsWith(langCode));
-        setVoices(filtered.length > 0 ? filtered : allVoices);
-        let defaultVoice = filtered.length > 0 ? filtered[0] : allVoices[0];
+        if (allVoices.length === 0) return; // Wait for voices to load
+        
+        // Normalize language code to lowercase
+        const langCode = (story.language || 'en').toLowerCase().split('-')[0];
+        
+        // Filter voices by language (case-insensitive)
+        // Match voices where lang starts with the language code (e.g., 'en' matches 'en-US', 'en-GB', etc.)
+        const filtered = allVoices.filter(v => {
+          if (!v.lang) return false;
+          const voiceLangCode = v.lang.toLowerCase().split('-')[0];
+          return voiceLangCode === langCode;
+        });
+        
+        // Use filtered voices if available, otherwise use all voices
+        const voicesToUse = filtered.length > 0 ? filtered : allVoices;
+        setVoices(voicesToUse);
+        
+        // Select default voice
+        let defaultVoice = voicesToUse[0] || null;
+        
+        // If there's a saved voice, try to use it if it matches the current language
         if (savedVoiceName) {
-          const found = allVoices.find(v => v.name === savedVoiceName);
-          if (found) defaultVoice = found;
+          const savedVoice = allVoices.find(v => v.name === savedVoiceName);
+          if (savedVoice) {
+            // Check if saved voice matches current language
+            const savedVoiceLangCode = savedVoice.lang ? savedVoice.lang.toLowerCase().split('-')[0] : '';
+            if (savedVoiceLangCode === langCode) {
+              defaultVoice = savedVoice;
+            } else if (filtered.length === 0) {
+              // If no voices for current language, use saved voice anyway
+              defaultVoice = savedVoice;
+            }
+          }
         }
+        
         setSelectedVoice(defaultVoice);
       };
+      
       populateVoices();
       window.speechSynthesis.onvoiceschanged = populateVoices;
     }
@@ -415,7 +677,17 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
     }
 
     const newUtterance = new window.SpeechSynthesisUtterance(paragraphs[currentParagraph]);
-    newUtterance.lang = story.language || 'en-US';
+    
+    // Map language codes to full locale codes for better speech synthesis
+    const languageMap = {
+      'en': 'en-US',
+      'es': 'es-ES',
+      'fr': 'fr-FR',
+      'de': 'de-DE',
+      'it': 'it-IT'
+    };
+    const langCode = (story.language || 'en').toLowerCase();
+    newUtterance.lang = languageMap[langCode] || langCode || 'en-US';
     newUtterance.rate = speechRate;
     if (selectedVoice) newUtterance.voice = selectedVoice;
 
@@ -655,6 +927,23 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
                 ←
               </motion.button>
             )}
+            {story.imageUrl ? (
+              <StoryHeaderIcon
+                src={story.imageUrl}
+                alt={story.title}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+              />
+            ) : (
+              <StoryHeaderIcon
+                src="/app_icon.png"
+                alt="AI Story Creator"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+              />
+            )}
             <StoryTitle
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
@@ -663,26 +952,55 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
               {story.title}
             </StoryTitle>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <HeaderButton
-              onClick={exportToPDF}
-              disabled={isExporting}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative' }} ref={headerMenuRef}>
+            <HeaderMenuButton
+              onClick={(e) => {
+                e.stopPropagation();
+                setHeaderMenuOpen(!headerMenuOpen);
+              }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              aria-label={isExporting ? "Exporting PDF" : "Export to PDF"}
-              title="Export to PDF"
+              aria-label="More options"
+              title="More options"
             >
-              {isExporting ? '⏳' : '📄'}
-            </HeaderButton>
-            <HeaderButton
-              onClick={toggleFullscreen}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-            >
-              {isFullscreen ? '🗗' : '🗖'}
-            </HeaderButton>
+              ⋮
+            </HeaderMenuButton>
+            
+            <AnimatePresence>
+              {headerMenuOpen && (
+                <HeaderMenuDropdown
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <HeaderMenuItem
+                    onClick={() => {
+                      exportToPDF();
+                      setHeaderMenuOpen(false);
+                    }}
+                    disabled={isExporting}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <span>{isExporting ? '⏳' : '📄'}</span>
+                    <span>{isExporting ? 'Exporting...' : 'Export to PDF'}</span>
+                  </HeaderMenuItem>
+                  <HeaderMenuItem
+                    onClick={() => {
+                      toggleFullscreen();
+                      setHeaderMenuOpen(false);
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <span>{isFullscreen ? '🗗' : '🗖'}</span>
+                    <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
+                  </HeaderMenuItem>
+                </HeaderMenuDropdown>
+              )}
+            </AnimatePresence>
+            
             <CloseButton
               onClick={onClose}
               onKeyDown={(e) => {
@@ -743,30 +1061,123 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
           ))}
         </StoryContent>
 
-        <StoryFooter
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          <LanguageTag
-            whileHover={{ scale: 1.1 }}
-          >
-            {story.language}
-          </LanguageTag>
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-          >
-            Source: {story.source === 'openai' ? '🤖 AI Generated' : '📄 PDF Upload'}
-          </motion.span>
-        </StoryFooter>
-
         <ControlsContainer
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.7 }}
+          ref={menuRef}
         >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', position: 'relative' }}>
+            <MenuButton
+              onClick={(e) => {
+                e.stopPropagation();
+                setMobileMenuOpen(!mobileMenuOpen);
+              }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              aria-label="Toggle settings menu"
+            >
+              ⋮
+            </MenuButton>
+
+            <AnimatePresence>
+              {mobileMenuOpen && (
+                <MenuDropdown
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <MenuSection>
+                    <MenuSectionLabel>Voice</MenuSectionLabel>
+                    <MobileVoiceSelectWrapper>
+                      <Select
+                        options={voices.map(v => ({ value: v.name, label: `${v.name} (${v.lang})` }))}
+                        value={selectedVoice ? { value: selectedVoice.name, label: `${selectedVoice.name} (${selectedVoice.lang})` } : null}
+                        onChange={handleVoiceChange}
+                        placeholder="Select voice..."
+                        isSearchable
+                        menuPlacement="top"
+                        styles={{
+                          control: (base) => ({
+                            ...base,
+                            borderRadius: 12,
+                            background: '#f0f0f0',
+                            fontFamily: 'Comic Sans MS, cursive',
+                            color: '#2c3e50',
+                            minHeight: '40px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                            border: '1px solid #e0e0e0',
+                          }),
+                          menu: (base) => ({ ...base, zIndex: 9999 }),
+                          option: (base, state) => ({
+                            ...base,
+                            background: state.isSelected ? '#4ECDC4' : state.isFocused ? '#e0e0e0' : '#fff',
+                            color: state.isSelected ? 'white' : '#2c3e50',
+                            fontFamily: 'Comic Sans MS, cursive',
+                          }),
+                        }}
+                      />
+                    </MobileVoiceSelectWrapper>
+                  </MenuSection>
+                  <MenuSection>
+                    <MenuSectionLabel>Speed</MenuSectionLabel>
+                    <MobileSpeedControl>
+                      <SpeedButton
+                        active={speechRate === 0.75}
+                        onClick={() => {
+                          handleSpeedChange(0.75);
+                          setMobileMenuOpen(false);
+                        }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        aria-label="Set reading speed to 0.75x"
+                        aria-pressed={speechRate === 0.75}
+                      >
+                        0.75x
+                      </SpeedButton>
+                      <SpeedButton
+                        active={speechRate === 1}
+                        onClick={() => {
+                          handleSpeedChange(1);
+                          setMobileMenuOpen(false);
+                        }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        aria-label="Set reading speed to 1x"
+                        aria-pressed={speechRate === 1}
+                      >
+                        1x
+                      </SpeedButton>
+                      <SpeedButton
+                        active={speechRate === 1.25}
+                        onClick={() => {
+                          handleSpeedChange(1.25);
+                          setMobileMenuOpen(false);
+                        }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        aria-label="Set reading speed to 1.25x"
+                        aria-pressed={speechRate === 1.25}
+                      >
+                        1.25x
+                      </SpeedButton>
+                    </MobileSpeedControl>
+                  </MenuSection>
+                </MenuDropdown>
+              )}
+            </AnimatePresence>
+
+            <LanguageTag
+              whileHover={{ scale: 1.05 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+            >
+              {story.language}
+            </LanguageTag>
+          </div>
+          
           <VoiceSelectWrapper>
             <Select
               options={voices.map(v => ({ value: v.name, label: `${v.name} (${v.lang})` }))}
@@ -830,26 +1241,28 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
             </SpeedButton>
           </SpeedControl>
 
-          <ControlButton
-            onClick={handleStop}
-            disabled={!isPlaying}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            aria-label="Stop reading"
-            title="Stop reading"
-          >
-            ⏹️
-          </ControlButton>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <ControlButton
+              onClick={handleStop}
+              disabled={!isPlaying}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label="Stop reading"
+              title="Stop reading"
+            >
+              ⏹️
+            </ControlButton>
 
-          <ControlButton
-            onClick={togglePlayPause}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            aria-label={isPlaying ? "Pause reading" : "Start reading"}
-            title={isPlaying ? "Pause reading" : "Start reading"}
-          >
-            {isPlaying ? '⏸️' : '▶️'}
-          </ControlButton>
+            <ControlButton
+              onClick={togglePlayPause}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label={isPlaying ? "Pause reading" : "Start reading"}
+              title={isPlaying ? "Pause reading" : "Start reading"}
+            >
+              {isPlaying ? '⏸️' : '▶️'}
+            </ControlButton>
+          </div>
         </ControlsContainer>
       </ViewerContent>
     </ViewerContainer>
