@@ -1,13 +1,13 @@
-// Vercel serverless function for stories API (SIN EXPRESS)
+// Vercel serverless function for stories API (NO EXPRESS)
 
 require('dotenv').config();
 
 const {
   getAllStories,
   checkRateLimit,
-} = require('../../server/src/db');
+} = require('../server/src/db');
 
-// Helper para obtener IP en entorno serverless
+// Helper to get IP address in serverless environment
 function getIpAddress(req) {
   return (
     req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
@@ -20,15 +20,16 @@ function getIpAddress(req) {
 module.exports = async (req, res) => {
   const { method, url } = req;
 
-  // Vercel pasa solo la parte después de /api/stories, por ejemplo: "/test", "/saved"
+  // For this handler, Vercel maps `/api/stories` directly here.
+  // We support a few simple subpaths via query/path parsing if needed later.
   const path = (url || '').split('?')[0] || '/';
 
   try {
-    // 1) Endpoint de test: /api/stories/test
-    if (path === '/test') {
+    // Simple diagnostics endpoint: GET /api/stories?test=1 or /api/stories/test (when routed)
+    if (path.endsWith('/test') || req.query?.test === '1') {
       return res.status(200).json({
         status: 'ok',
-        message: 'Stories API serverless handler is running (sin Express)',
+        message: 'Stories serverless API running without Express',
         env: {
           hasPostgresUrl: !!process.env.POSTGRES_URL,
           hasOpenAiKey: !!process.env.OPENAI_API_KEY,
@@ -37,8 +38,8 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 2) Rate limit: GET /api/stories/rate-limit
-    if (method === 'GET' && path === '/rate-limit') {
+    // Rate‑limit status: GET /api/stories?rateLimit=1
+    if (method === 'GET' && (path.endsWith('/rate-limit') || req.query?.rateLimit === '1')) {
       const ipAddress = getIpAddress(req);
       const info = await checkRateLimit(ipAddress, 3);
 
@@ -53,8 +54,8 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 3) Historias guardadas: GET /api/stories/saved
-    if (method === 'GET' && path === '/saved') {
+    // Saved stories: GET /api/stories
+    if (method === 'GET') {
       const ipAddress = getIpAddress(req);
       const stories = await getAllStories(ipAddress);
 
@@ -72,10 +73,10 @@ module.exports = async (req, res) => {
       return res.status(200).json(formatted);
     }
 
-    // Cualquier otra ruta aún no implementada
+    // Anything else is not implemented yet
     return res.status(404).json({
       error: 'Not implemented',
-      details: `Path ${path} con método ${method} aún no está manejado en la API serverless de stories.`,
+      details: `Path ${path} with method ${method} is not handled in /api/stories.`,
     });
   } catch (error) {
     console.error('Stories API handler error:', error);
@@ -85,3 +86,5 @@ module.exports = async (req, res) => {
     });
   }
 };
+
+
