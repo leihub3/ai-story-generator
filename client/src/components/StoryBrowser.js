@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import styled from '@emotion/styled';
 import './StoryBrowser.css';
 import ConfirmModal from './ConfirmModal';
+import EditStoryModal from './EditStoryModal';
 
 const API_URL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api');
 
@@ -680,6 +681,8 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
   const [editedTitle, setEditedTitle] = useState('');
   const [isSavingAll, setIsSavingAll] = useState(false);
   const [success, setSuccess] = useState('');
+  const [editingStory, setEditingStory] = useState(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const languageOptions = [
     { value: '', label: 'All Languages' },
@@ -914,14 +917,20 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch(`${API_URL}/stories/delete/${storyToDelete}`, {
+      const response = await fetch(`${API_URL}/stories/delete?id=${storyToDelete}`, {
         method: 'DELETE'
       });
 
       if (!response.ok) throw new Error('Failed to delete story');
+      
+      const deletedStory = stories.find(s => s.id === storyToDelete);
       setStories(prev => prev.filter(story => story.id !== storyToDelete));
       setShowConfirmModal(false);
       setStoryToDelete(null);
+      
+      // Show success message
+      setSuccess(`Story "${deletedStory?.title || 'Untitled'}" deleted successfully!`);
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.message);
       setShowConfirmModal(false);
@@ -977,6 +986,49 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
   const handleTitleKeyPress = (e, storyId) => {
     if (e.key === 'Enter') {
       handleTitleBlur(storyId);
+    }
+  };
+
+  const handleEditStory = (story) => {
+    setEditingStory(story);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingStory(null);
+  };
+
+  const handleSaveEdit = async (editedStory) => {
+    try {
+      setIsSavingEdit(true);
+      setError(null);
+      
+      const response = await fetch(`${API_URL}/stories/edit?id=${editedStory.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editedStory.title,
+          content: editedStory.content,
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update story');
+      }
+
+      const updatedStory = await response.json();
+      
+      setStories(prev => prev.map(story => 
+        story.id === editedStory.id ? updatedStory : story
+      ));
+      
+      setEditingStory(null);
+      setSuccess('Story updated successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -1397,21 +1449,42 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                           ))}
                         </StoryContent>
                         <div className="story-footer">
-                          <motion.span 
-                            className="story-language"
-                            whileHover={{ scale: 1.1 }}
-                          >
-                            {languageOptions.find(opt => opt.value === story.language)?.label || story.language}
-                          </motion.span>
-                          {story.tag && (
-                            <motion.span
-                              className="story-tag"
-                              style={{ background: '#e0f7fa', color: '#007c91', borderRadius: 12, padding: '0.25rem 0.75rem', marginLeft: 8, fontSize: '0.9rem' }}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            flexWrap: 'wrap',
+                            flex: '1',
+                            minWidth: 0,
+                          }}>
+                            <motion.span 
+                              className="story-language"
+                              whileHover={{ scale: 1.1 }}
+                              style={{ whiteSpace: 'nowrap' }}
                             >
-                              #{story.tag}
+                              {languageOptions.find(opt => opt.value === story.language)?.label || story.language}
                             </motion.span>
-                          )}
-                          <div className="story-actions">
+                            {story.tag && (
+                              <motion.span
+                                className="story-tag"
+                                style={{ 
+                                  background: '#e0f7fa', 
+                                  color: '#007c91', 
+                                  borderRadius: 12, 
+                                  padding: '0.25rem 0.75rem', 
+                                  fontSize: '0.9rem',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  maxWidth: '200px',
+                                }}
+                                title={`#${story.tag}`}
+                              >
+                                #{story.tag}
+                              </motion.span>
+                            )}
+                          </div>
+                          <div className="story-actions" style={{ flexShrink: 0 }}>
                             {viewMode === 'new' && story.source === 'openai' && (
                               <IconButton
                                 onClick={() => handleSaveStory(story)}
@@ -1590,21 +1663,42 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                       ))}
                     </StoryContent>
                     <div className="story-footer">
-                      <motion.span 
-                        className="story-language"
-                        whileHover={{ scale: 1.1 }}
-                      >
-                        {languageOptions.find(opt => opt.value === story.language)?.label || story.language}
-                      </motion.span>
-                      {story.tag && (
-                        <motion.span
-                          className="story-tag"
-                          style={{ background: '#e0f7fa', color: '#007c91', borderRadius: 12, padding: '0.25rem 0.75rem', marginLeft: 8, fontSize: '0.9rem' }}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        flexWrap: 'wrap',
+                        flex: '1',
+                        minWidth: 0,
+                      }}>
+                        <motion.span 
+                          className="story-language"
+                          whileHover={{ scale: 1.1 }}
+                          style={{ whiteSpace: 'nowrap' }}
                         >
-                          #{story.tag}
+                          {languageOptions.find(opt => opt.value === story.language)?.label || story.language}
                         </motion.span>
-                      )}
-                      <div className="story-actions">
+                        {story.tag && (
+                          <motion.span
+                            className="story-tag"
+                            style={{ 
+                              background: '#e0f7fa', 
+                              color: '#007c91', 
+                              borderRadius: 12, 
+                              padding: '0.25rem 0.75rem', 
+                              fontSize: '0.9rem',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '200px',
+                            }}
+                            title={`#${story.tag}`}
+                          >
+                            #{story.tag}
+                          </motion.span>
+                        )}
+                      </div>
+                      <div className="story-actions" style={{ flexShrink: 0 }}>
                         {viewMode === 'new' && story.source === 'openai' && (
                           <IconButton
                             onClick={() => handleSaveStory(story)}
@@ -1624,15 +1718,26 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                           📖
                         </IconButton>
                         {viewMode === 'saved' && (
-                          <IconButton
-                            onClick={() => handleDeleteStory(story.id)}
-                            title="Delete Story"
-                            delete
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            🗑️
-                          </IconButton>
+                          <>
+                            <IconButton
+                              onClick={() => handleEditStory(story)}
+                              title="Edit Story"
+                              style={{ background: '#FFA500' }}
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                            >
+                              ✏️
+                            </IconButton>
+                            <IconButton
+                              onClick={() => handleDeleteStory(story.id)}
+                              title="Delete Story"
+                              delete
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                            >
+                              🗑️
+                            </IconButton>
+                          </>
                         )}
                       </div>
                     </div>
@@ -1649,6 +1754,14 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
             message="¿Estás seguro de que deseas eliminar esta historia?"
             onCancel={cancelDeleteStory}
             onConfirm={confirmDeleteStory}
+          />
+        )}
+        {editingStory && (
+          <EditStoryModal
+            story={editingStory}
+            onCancel={handleCancelEdit}
+            onSave={handleSaveEdit}
+            isSaving={isSavingEdit}
           />
         )}
       </AnimatePresence>

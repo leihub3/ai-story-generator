@@ -5,7 +5,9 @@
   "private": true,
   "scripts": {
     "build": "cd client && npm install && npm run build",
-    "start": "cd server && npm start"
+    "start": "cd server && npm start",
+    "dev:api": "npx vercel dev",
+    "dev:client": "cd client && npm start"
   },
   "dependencies": {
     "pg": "^8.11.3",

@@ -4,6 +4,7 @@ import styled from '@emotion/styled';
 import LanguageSelector from './LanguageSelector';
 import './StoryBrowser.css';
 import ConfirmModal from './ConfirmModal';
+import EditStoryModal from './EditStoryModal';
 
 const API_URL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api');
 
@@ -216,10 +217,13 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
   const [selectedLanguage, setSelectedLanguage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [storyToDelete, setStoryToDelete] = useState(null);
   const [editingTitle, setEditingTitle] = useState(null);
   const [editedTitle, setEditedTitle] = useState('');
+  const [editingStory, setEditingStory] = useState(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const languageOptions = [
     { value: '', label: 'All Languages' },
@@ -290,14 +294,20 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch(`${API_URL}/stories/delete/${storyToDelete}`, {
+      const response = await fetch(`${API_URL}/stories/delete?id=${storyToDelete}`, {
         method: 'DELETE'
       });
 
       if (!response.ok) throw new Error('Failed to delete story');
+      
+      const deletedStory = stories.find(s => s.id === storyToDelete);
       setStories(prev => prev.filter(story => story.id !== storyToDelete));
       setShowConfirmModal(false);
       setStoryToDelete(null);
+      
+      // Show success message
+      setSuccess(`Story "${deletedStory?.title || 'Untitled'}" deleted successfully!`);
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.message);
       setShowConfirmModal(false);
@@ -332,7 +342,7 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
   const handleTitleBlur = async (storyId) => {
     if (editedTitle.trim() && editedTitle !== stories.find(s => s.id === storyId)?.title) {
       try {
-        const response = await fetch(`${API_URL}/stories/update/${storyId}`, {
+        const response = await fetch(`${API_URL}/stories/${storyId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title: editedTitle.trim() })
@@ -353,6 +363,52 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
   const handleTitleKeyPress = (e, storyId) => {
     if (e.key === 'Enter') {
       handleTitleBlur(storyId);
+    }
+  };
+
+  const handleEditStory = (story) => {
+    setEditingStory(story);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingStory(null);
+  };
+
+  const handleSaveEdit = async (editedStory) => {
+    try {
+      setIsSavingEdit(true);
+      setError(null);
+      
+      const response = await fetch(`${API_URL}/stories/edit?id=${editedStory.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editedStory.title,
+          content: editedStory.content,
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update story');
+      }
+
+      const updatedStory = await response.json();
+      
+      setStories(prev => prev.map(story => 
+        story.id === editedStory.id ? updatedStory : story
+      ));
+      setAllStories(prev => prev.map(story => 
+        story.id === editedStory.id ? updatedStory : story
+      ));
+      
+      setEditingStory(null);
+      setSuccess('Story updated successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -408,6 +464,24 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
             style={{ marginBottom: '1rem' }}
           >
             {error}
+          </motion.div>
+        )}
+
+        {success && (
+          <motion.div
+            style={{
+              background: '#d4edda',
+              color: '#155724',
+              padding: '1rem',
+              borderRadius: '8px',
+              marginBottom: '1rem',
+              textAlign: 'center',
+            }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            ✅ {success}
           </motion.div>
         )}
 
@@ -515,33 +589,53 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
                   marginTop: 'auto',
                   paddingTop: '0.75rem',
                   borderTop: '1px solid #eee',
+                  gap: '0.75rem',
+                  flexWrap: 'wrap',
                 }}>
-                  <motion.span
-                    style={{
-                      background: '#f8f9fa',
-                      padding: '0.35rem 0.75rem',
-                      borderRadius: '20px',
-                      fontSize: '0.85rem',
-                      color: '#666',
-                    }}
-                  >
-                    {languageOptions.find(opt => opt.value === story.language)?.label || story.language}
-                  </motion.span>
-                  {story.tag && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    flexWrap: 'wrap',
+                    flex: '1',
+                    minWidth: 0,
+                  }}>
                     <motion.span
                       style={{
-                        background: '#e0f7fa',
-                        color: '#007c91',
-                        borderRadius: 12,
-                        padding: '0.25rem 0.75rem',
-                        marginLeft: 8,
-                        fontSize: '0.9rem'
+                        background: '#f8f9fa',
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '20px',
+                        fontSize: '0.85rem',
+                        color: '#666',
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      #{story.tag}
+                      {languageOptions.find(opt => opt.value === story.language)?.label || story.language}
                     </motion.span>
-                  )}
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {story.tag && (
+                      <motion.span
+                        style={{
+                          background: '#e0f7fa',
+                          color: '#007c91',
+                          borderRadius: 12,
+                          padding: '0.25rem 0.75rem',
+                          fontSize: '0.9rem',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: '200px',
+                        }}
+                        title={`#${story.tag}`}
+                      >
+                        #{story.tag}
+                      </motion.span>
+                    )}
+                  </div>
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '0.5rem',
+                    flexShrink: 0,
+                  }}>
                     <IconButton
                       onClick={() => onSelectStory(story)}
                       aria-label="Read Story"
@@ -550,6 +644,16 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
                       whileTap={{ scale: 0.9 }}
                     >
                       📖
+                    </IconButton>
+                    <IconButton
+                      onClick={() => handleEditStory(story)}
+                      aria-label="Edit Story"
+                      title="Edit Story"
+                      style={{ background: '#FFA500' }}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      ✏️
                     </IconButton>
                     <IconButton
                       onClick={() => handleDeleteStory(story.id)}
@@ -575,6 +679,14 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
             message="Are you sure you want to delete this story?"
             onCancel={cancelDeleteStory}
             onConfirm={confirmDeleteStory}
+          />
+        )}
+        {editingStory && (
+          <EditStoryModal
+            story={editingStory}
+            onCancel={handleCancelEdit}
+            onSave={handleSaveEdit}
+            isSaving={isSavingEdit}
           />
         )}
       </AnimatePresence>

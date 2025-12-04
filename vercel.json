@@ -6,16 +6,12 @@
   "framework": null,
   "rewrites": [
     {
-      "source": "/api/stories/(.*)",
-      "destination": "/api/stories"
+      "source": "/api/stories/delete/:id*",
+      "destination": "/api/stories/delete"
     },
     {
-      "source": "/api/translate/(.*)",
-      "destination": "/api/translate"
-    },
-    {
-      "source": "/api/health",
-      "destination": "/api/health"
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     },
     {
       "source": "/(.*)",
