@@ -917,18 +917,31 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
       const imageX = pageWidth - margin - imageWidth;
 
       if (currentStory?.imageUrl || story.imageUrl) {
+        const imageUrlToUse = currentStory?.imageUrl || story.imageUrl;
+        
         try {
-          const response = await fetch(`${API_URL}/stories/image-proxy`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageUrl: currentStory?.imageUrl || story.imageUrl })
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            imgData = data.dataUrl;
+          // Check if image is already Base64 (data URI)
+          if (imageUrlToUse.startsWith('data:image')) {
+            // Already Base64, use directly
+            imgData = imageUrlToUse;
+          } else {
+            // It's a URL, use proxy to convert to Base64
+            const response = await fetch(`${API_URL}/stories/image-proxy`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ imageUrl: imageUrlToUse })
+            });
             
-            // Get image dimensions
+            if (response.ok) {
+              const data = await response.json();
+              imgData = data.dataUrl;
+            } else {
+              throw new Error('Failed to proxy image');
+            }
+          }
+          
+          // Get image dimensions (works for both Base64 and proxied images)
+          if (imgData) {
             const img = new Image();
             await new Promise((resolve, reject) => {
               const timeout = setTimeout(() => reject(new Error('Image load timeout')), 10000);

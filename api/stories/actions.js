@@ -19,7 +19,18 @@ module.exports = async (req, res) => {
   }
 
   const { method, url } = req;
-  const path = url.split('?')[0];
+  
+  // Get the original path - Vercel may pass it in different ways
+  // 1. Check x-vercel-original-path header (when rewrite happens)
+  // 2. Check x-invoke-path header (alternative Vercel header)
+  // 3. Use url directly
+  const originalPath = 
+    req.headers['x-vercel-original-path'] || 
+    req.headers['x-invoke-path'] || 
+    url || 
+    '';
+  
+  const path = originalPath.split('?')[0] || url.split('?')[0];
   
   // Determine action from path
   let action = null;
@@ -28,7 +39,18 @@ module.exports = async (req, res) => {
   else if (path.includes('/delete')) action = 'delete';
 
   if (!action) {
-    return res.status(400).json({ error: 'Invalid action path' });
+    return res.status(400).json({ 
+      error: 'Invalid action path',
+      debug: {
+        url,
+        path,
+        originalPath,
+        headers: {
+          'x-vercel-original-path': req.headers['x-vercel-original-path'],
+          'x-invoke-path': req.headers['x-invoke-path'],
+        }
+      }
+    });
   }
 
   // Extract ID from query params or path

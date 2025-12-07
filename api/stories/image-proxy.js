@@ -30,6 +30,12 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Image URL is required' });
     }
 
+    // If image is already Base64 (data URI), return it directly
+    if (imageUrl.startsWith('data:image')) {
+      console.log('Image is already Base64, returning directly');
+      return res.status(200).json({ dataUrl: imageUrl });
+    }
+
     console.log('Proxying image:', imageUrl);
 
     // Download the image using axios (server-side, no CORS restrictions)

@@ -137,8 +137,33 @@ module.exports = async (req, res) => {
           }
         );
 
-        imageUrl = imageResponse.data.data[0].url;
-        console.log('Image generated successfully:', imageUrl);
+        const imageUrlFromDalle = imageResponse.data.data[0].url;
+        console.log('Image generated successfully:', imageUrlFromDalle);
+        
+        // Download the image and convert to Base64
+        try {
+          console.log('Downloading image to convert to Base64...');
+          const imageDownloadResponse = await axios.get(imageUrlFromDalle, {
+            responseType: 'arraybuffer',
+            timeout: 30000, // 30 second timeout for image download
+          });
+          
+          // Convert arraybuffer to Base64
+          const imageBuffer = Buffer.from(imageDownloadResponse.data);
+          const base64String = imageBuffer.toString('base64');
+          
+          // Determine image format from content-type or default to png
+          const contentType = imageDownloadResponse.headers['content-type'] || 'image/png';
+          
+          // Create data URI
+          imageUrl = `data:${contentType};base64,${base64String}`;
+          console.log('Image converted to Base64 successfully. Size:', base64String.length, 'characters');
+        } catch (downloadError) {
+          console.error('Error downloading/converting image to Base64:', downloadError.message);
+          // Fallback to URL if Base64 conversion fails
+          console.log('Falling back to URL storage');
+          imageUrl = imageUrlFromDalle;
+        }
       } catch (error) {
         console.error('DALL-E API error:', error.response?.data || error.message);
         // Continue without image if generation fails - story will still be generated
