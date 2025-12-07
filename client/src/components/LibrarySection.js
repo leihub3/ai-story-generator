@@ -93,7 +93,7 @@ const SearchInput = styled(motion.input)`
   &::placeholder {
     color: #999;
   }
-  
+
   &:focus {
     background: transparent;
     outline: 2px solid #667eea;
@@ -422,7 +422,8 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
     try {
       setIsDeleting(true);
       setError(null);
-      const response = await fetch(`${API_URL}/stories/delete?id=${storyToDelete}`, {
+      // Use /api/stories/actions/delete endpoint
+      const response = await fetch(`${API_URL}/stories/actions/delete?id=${storyToDelete}`, {
         method: 'DELETE'
       });
 
@@ -541,6 +542,7 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
     }
   };
 
+
   const handleToggleShare = async (storyId) => {
     try {
       setError(null);
@@ -620,14 +622,14 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
           />
           <Separator />
           <div style={{ minWidth: '120px', width: '120px', flexShrink: 0 }}>
-            <LanguageSelector
-              value={selectedLanguage}
-              onChange={handleLanguageChange}
-              options={languageOptions}
+          <LanguageSelector
+            value={selectedLanguage}
+            onChange={handleLanguageChange}
+            options={languageOptions}
               placeholder="Lang..."
               variant="unified"
-              tall={false}
-            />
+            tall={false}
+          />
           </div>
         </UnifiedSearchContainer>
 
@@ -746,9 +748,9 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
                       transition={{ duration: 0.3 }}
                     />
                   ) : (
-                    <StoryIcon>
-                      {getStoryIcon(story.source)}
-                    </StoryIcon>
+                  <StoryIcon>
+                    {getStoryIcon(story.source)}
+                  </StoryIcon>
                   )}
                   {editingTitle === story.id ? (
                     <TitleInput
@@ -843,17 +845,17 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
                     flexWrap: 'wrap',
                     flex: '1',
                     minWidth: 0,
-                  }}>
-                    <motion.span
-                      style={{
-                        background: '#f8f9fa',
-                        padding: '0.35rem 0.75rem',
-                        borderRadius: '20px',
-                        fontSize: '0.85rem',
-                        color: '#666',
+                }}>
+                  <motion.span
+                    style={{
+                      background: '#f8f9fa',
+                      padding: '0.35rem 0.75rem',
+                      borderRadius: '20px',
+                      fontSize: '0.85rem',
+                      color: '#666',
                         whiteSpace: 'nowrap',
-                      }}
-                    >
+                    }}
+                  >
                       {LANGUAGE_NAMES[story.language] || story.language}
                     </motion.span>
                     {story.isShared && (
@@ -870,26 +872,26 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
                         title="This story is publicly shared"
                       >
                         🔗 Shared
-                      </motion.span>
+                  </motion.span>
                     )}
-                    {story.tag && (
-                      <motion.span
-                        style={{
-                          background: '#e0f7fa',
-                          color: '#007c91',
-                          borderRadius: 12,
-                          padding: '0.25rem 0.75rem',
+                  {story.tag && (
+                    <motion.span
+                      style={{
+                        background: '#e0f7fa',
+                        color: '#007c91',
+                        borderRadius: 12,
+                        padding: '0.25rem 0.75rem',
                           fontSize: '0.9rem',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           maxWidth: '200px',
-                        }}
+                      }}
                         title={`#${story.tag}`}
-                      >
-                        #{story.tag}
-                      </motion.span>
-                    )}
+                    >
+                      #{story.tag}
+                    </motion.span>
+                  )}
                   </div>
                   <div style={{ 
                     display: 'flex', 

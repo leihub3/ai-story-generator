@@ -42,6 +42,9 @@ module.exports = async (req, res) => {
         source: story.source,
         tag: story.tag,
         imageUrl: story.image_url,
+        musicUrl: story.music_url,
+        musicPrompt: story.music_prompt,
+        soundEffects: story.sound_effects,
         isShared: story.is_shared || false,
         createdAt: story.created_at,
       };
@@ -86,6 +89,9 @@ module.exports = async (req, res) => {
         source: updatedStory.source,
         tag: updatedStory.tag,
         imageUrl: updatedStory.image_url,
+        musicUrl: updatedStory.music_url,
+        musicPrompt: updatedStory.music_prompt,
+        soundEffects: updatedStory.sound_effects,
         createdAt: updatedStory.created_at,
       };
 

@@ -1032,7 +1032,8 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
     try {
       setIsDeleting(true);
       setError(null);
-      const response = await fetch(`${API_URL}/stories/delete?id=${storyToDelete}`, {
+      // Use /api/stories/actions/delete endpoint
+      const response = await fetch(`${API_URL}/stories/actions/delete?id=${storyToDelete}`, {
         method: 'DELETE'
       });
 
@@ -1572,19 +1573,19 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                               transition={{ duration: 0.3 }}
                             />
                           ) : (
-                            <StoryIcon
-                              variants={{
-                                hover: {
-                                  rotate: [0, -10, 10, -10, 0],
-                                  transition: {
-                                    duration: 0.5
-                                  }
+                          <StoryIcon
+                            variants={{
+                              hover: {
+                                rotate: [0, -10, 10, -10, 0],
+                                transition: {
+                                  duration: 0.5
                                 }
-                              }}
-                              whileHover="hover"
-                            >
-                              {getStoryIcon(story.source)}
-                            </StoryIcon>
+                              }
+                            }}
+                            whileHover="hover"
+                          >
+                            {getStoryIcon(story.source)}
+                          </StoryIcon>
                           )}
                           {editingTitle === story.id ? (
                             <TitleInput
@@ -1673,13 +1674,13 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                             flex: '1',
                             minWidth: 0,
                           }}>
-                            <motion.span 
-                              className="story-language"
-                              whileHover={{ scale: 1.1 }}
+                          <motion.span 
+                            className="story-language"
+                            whileHover={{ scale: 1.1 }}
                               style={{ whiteSpace: 'nowrap' }}
-                            >
+                          >
                               {LANGUAGE_NAMES[story.language] || story.language}
-                            </motion.span>
+                          </motion.span>
                             {story.isShared && (
                               <motion.span
                                 style={{ 
@@ -1696,9 +1697,9 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                                 🔗 Shared
                               </motion.span>
                             )}
-                            {story.tag && (
-                              <motion.span
-                                className="story-tag"
+                          {story.tag && (
+                            <motion.span
+                              className="story-tag"
                                 style={{ 
                                   background: '#e0f7fa', 
                                   color: '#007c91', 
@@ -1711,10 +1712,10 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                                   maxWidth: '200px',
                                 }}
                                 title={`#${story.tag}`}
-                              >
-                                #{story.tag}
-                              </motion.span>
-                            )}
+                            >
+                              #{story.tag}
+                            </motion.span>
+                          )}
                           </div>
                           <div className="story-actions" style={{ flexShrink: 0 }}>
                             {viewMode === 'new' && story.source === 'openai' && (
@@ -1871,19 +1872,19 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                           transition={{ duration: 0.3 }}
                         />
                       ) : (
-                        <StoryIcon
-                          variants={{
-                            hover: {
-                              rotate: [0, -10, 10, -10, 0],
-                              transition: {
-                                duration: 0.5
-                              }
+                      <StoryIcon
+                        variants={{
+                          hover: {
+                            rotate: [0, -10, 10, -10, 0],
+                            transition: {
+                              duration: 0.5
                             }
-                          }}
-                          whileHover="hover"
-                        >
-                          {getStoryIcon(story.source)}
-                        </StoryIcon>
+                          }
+                        }}
+                        whileHover="hover"
+                      >
+                        {getStoryIcon(story.source)}
+                      </StoryIcon>
                       )}
                       {editingTitle === story.id ? (
                         <TitleInput
@@ -1913,13 +1914,13 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                         flex: '1',
                         minWidth: 0,
                       }}>
-                        <motion.span 
-                          className="story-language"
-                          whileHover={{ scale: 1.1 }}
+                      <motion.span 
+                        className="story-language"
+                        whileHover={{ scale: 1.1 }}
                           style={{ whiteSpace: 'nowrap' }}
-                        >
+                      >
                           {LANGUAGE_NAMES[story.language] || story.language}
-                        </motion.span>
+                      </motion.span>
                         {story.isShared && (
                           <motion.span
                             style={{ 
@@ -1936,9 +1937,9 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                             🔗 Shared
                           </motion.span>
                         )}
-                        {story.tag && (
-                          <motion.span
-                            className="story-tag"
+                      {story.tag && (
+                        <motion.span
+                          className="story-tag"
                             style={{ 
                               background: '#e0f7fa', 
                               color: '#007c91', 
@@ -1951,10 +1952,10 @@ const StoryBrowser = ({ onSelectStory, onClose, isModal = true, initialViewMode 
                               maxWidth: '200px',
                             }}
                             title={`#${story.tag}`}
-                          >
-                            #{story.tag}
-                          </motion.span>
-                        )}
+                        >
+                          #{story.tag}
+                        </motion.span>
+                      )}
                       </div>
                       <div className="story-actions" style={{ flexShrink: 0 }}>
                         {viewMode === 'new' && story.source === 'openai' && (

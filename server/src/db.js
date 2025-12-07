@@ -23,7 +23,7 @@ pool.on('error', (err) => {
     console.error('Database pool error in serverless function:', err);
   } else {
     // Only exit in non-serverless environments
-    process.exit(-1);
+  process.exit(-1);
   }
 });
 
@@ -40,19 +40,30 @@ async function query(queryText, params = []) {
       throw new Error('POSTGRES_URL environment variable is not set');
     }
     
+    console.log('🔌 [DB] Attempting to connect to database pool...');
+    const connectStart = Date.now();
     const client = await pool.connect();
+    console.log(`🔌 [DB] Database client connected successfully (${Date.now() - connectStart}ms)`);
+    
     try {
+      console.log('🔌 [DB] Executing query:', queryText.substring(0, 100) + (queryText.length > 100 ? '...' : ''));
+      console.log('🔌 [DB] Query params:', params);
+      const queryStart = Date.now();
       const result = await client.query(queryText, params);
+      console.log(`🔌 [DB] Query executed successfully (${Date.now() - queryStart}ms), rows returned:`, result.rows.length);
       return result;
     } finally {
+      console.log('🔌 [DB] Releasing database client...');
       client.release();
+      console.log('🔌 [DB] Database client released');
     }
   } catch (error) {
-    console.error('Database query error:', error);
-    console.error('Error details:', {
+    console.error('❌ [DB] Database query error:', error);
+    console.error('❌ [DB] Error details:', {
       message: error.message,
       code: error.code,
-      connectionString: process.env.POSTGRES_URL ? 'Set' : 'Not set'
+      connectionString: process.env.POSTGRES_URL ? 'Set' : 'Not set',
+      stack: error.stack
     });
     throw error;
   }
@@ -107,13 +118,24 @@ async function getStoryById(storyId) {
  */
 async function saveStory(story, ipAddress = null) {
   try {
-    const { title, content, language, imageUrl, source, tag } = story;
+    const { title, content, language, imageUrl, source, tag, musicUrl, musicPrompt, soundEffects } = story;
     
     const result = await query(
-      `INSERT INTO stories (title, content, language, image_url, source, ip_address, tag)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO stories (title, content, language, image_url, source, ip_address, tag, music_url, music_prompt, sound_effects)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [title, content, language, imageUrl || null, source || 'openai', ipAddress, tag || null]
+      [
+        title, 
+        content, 
+        language, 
+        imageUrl || null, 
+        source || 'openai', 
+        ipAddress, 
+        tag || null,
+        musicUrl || null,
+        musicPrompt || null,
+        soundEffects ? JSON.stringify(soundEffects) : null
+      ]
     );
     
     return result.rows[0];
@@ -187,6 +209,40 @@ async function updateStory(storyId, updates) {
     if (updates.imageUrl !== undefined) {
       fields.push(`image_url = $${paramIndex++}`);
       values.push(updates.imageUrl);
+    }
+    if (updates.musicUrl !== undefined) {
+      fields.push(`music_url = $${paramIndex++}`);
+      values.push(updates.musicUrl);
+    }
+    if (updates.musicPrompt !== undefined) {
+      fields.push(`music_prompt = $${paramIndex++}`);
+      values.push(updates.musicPrompt);
+    }
+    if (updates.sunoTaskId !== undefined) {
+      // Check if column exists before trying to update it
+      // If it doesn't exist, we'll skip this update (migration needs to be run)
+      try {
+        const columnCheck = await query(
+          `SELECT column_name 
+           FROM information_schema.columns 
+           WHERE table_name='stories' AND column_name='suno_task_id'`
+        );
+        if (columnCheck.rows.length > 0) {
+          fields.push(`suno_task_id = $${paramIndex++}`);
+          values.push(updates.sunoTaskId);
+        } else {
+          console.warn('Column suno_task_id does not exist. Please run migration 003_add_audio_fields.sql');
+        }
+      } catch (err) {
+        console.warn('Could not check for suno_task_id column:', err.message);
+        // Try to add it anyway - might work if migration was partially run
+        fields.push(`suno_task_id = $${paramIndex++}`);
+        values.push(updates.sunoTaskId);
+      }
+    }
+    if (updates.soundEffects !== undefined) {
+      fields.push(`sound_effects = $${paramIndex++}`);
+      values.push(updates.soundEffects ? JSON.stringify(updates.soundEffects) : null);
     }
     if (updates.tag !== undefined) {
       fields.push(`tag = $${paramIndex++}`);
@@ -377,6 +433,26 @@ async function checkRateLimit(ipAddress, maxStories = 3) {
   }
 }
 
+/**
+ * Update story audio fields
+ * @param {string} storyId - Story UUID
+ * @param {Object} audioData - Audio data object
+ * @returns {Promise<Object|null>} Updated story or null
+ */
+async function updateStoryAudio(storyId, audioData) {
+  try {
+    const updates = {};
+    if (audioData.musicUrl !== undefined) updates.musicUrl = audioData.musicUrl;
+    if (audioData.musicPrompt !== undefined) updates.musicPrompt = audioData.musicPrompt;
+    if (audioData.soundEffects !== undefined) updates.soundEffects = audioData.soundEffects;
+    
+    return await updateStory(storyId, updates);
+  } catch (error) {
+    console.error('Error updating story audio:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   query,
   getAllStories,
@@ -385,6 +461,7 @@ module.exports = {
   saveStories,
   deleteStory,
   updateStory,
+  updateStoryAudio,
   toggleShareStory,
   searchStories,
   getRateLimit,

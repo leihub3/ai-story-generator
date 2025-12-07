@@ -35,15 +35,18 @@ module.exports = async (req, res) => {
 
   try {
     const ipAddress = getIpAddress(req);
-    const info = await checkRateLimit(ipAddress, 3);
+    // In development, use a very high limit (9999) to effectively disable rate limiting
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    const rateLimit = isDevelopment ? 9999 : 3;
+    const info = await checkRateLimit(ipAddress, rateLimit);
 
     res.setHeader('X-RateLimit-Remaining', info.remaining);
     res.setHeader('X-RateLimit-Reset', info.resetDate.toISOString());
-    res.setHeader('X-RateLimit-Limit', 3);
+    res.setHeader('X-RateLimit-Limit', rateLimit);
 
     return res.status(200).json({
       remaining: info.remaining,
-      limit: 3,
+      limit: rateLimit,
       resetDate: info.resetDate.toISOString(),
     });
   } catch (error) {

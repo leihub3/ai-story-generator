@@ -365,6 +365,7 @@ const GenerateSection = ({ onSelectStory, onStoriesSaved }) => {
   const [savingStoryId, setSavingStoryId] = useState(null);
   const [success, setSuccess] = useState('');
   const [generateMultiple, setGenerateMultiple] = useState(false);
+
   const [rateLimitInfo, setRateLimitInfo] = useState({ remaining: 3, resetDate: null });
 
   const languageOptions = LANGUAGE_OPTIONS;
@@ -896,9 +897,9 @@ const GenerateSection = ({ onSelectStory, onStoriesSaved }) => {
                         transition={{ duration: 0.3 }}
                       />
                     ) : (
-                      <StoryIcon>
-                        {getStoryIcon(story.source)}
-                      </StoryIcon>
+                    <StoryIcon>
+                      {getStoryIcon(story.source)}
+                    </StoryIcon>
                     )}
                     <StoryTitle>
                       {story.title}

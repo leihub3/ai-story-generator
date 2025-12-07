@@ -137,7 +137,10 @@ module.exports = async (req, res) => {
       const ipAddress = getIpAddress(req);
 
       // Check rate limit before calling OpenAI
-      const limitInfo = await checkRateLimit(ipAddress, 3);
+      // In development, use a very high limit (9999) to effectively disable rate limiting
+      const isDevelopment = process.env.NODE_ENV !== 'production';
+      const rateLimit = isDevelopment ? 9999 : 3;
+      const limitInfo = await checkRateLimit(ipAddress, rateLimit);
       if (!limitInfo.allowed) {
         return res.status(429).json({
           error: 'Rate limit exceeded',
@@ -198,8 +201,9 @@ module.exports = async (req, res) => {
       let imageUrl = null;
 
       // Increment rate limit after successful generation
+      // Reuse isDevelopment and rateLimit from above
       await incrementRateLimitAfterGeneration(ipAddress);
-      const updatedLimit = await checkRateLimit(ipAddress, 3);
+      const updatedLimit = await checkRateLimit(ipAddress, rateLimit);
 
       const story = {
         id: Date.now().toString(),
@@ -213,7 +217,7 @@ module.exports = async (req, res) => {
 
       res.setHeader('X-RateLimit-Remaining', updatedLimit.remaining);
       res.setHeader('X-RateLimit-Reset', updatedLimit.resetDate.toISOString());
-      res.setHeader('X-RateLimit-Limit', 3);
+      res.setHeader('X-RateLimit-Limit', rateLimit);
 
       return res.status(200).json({
         query,
@@ -266,6 +270,43 @@ module.exports = async (req, res) => {
         return res.status(500).json({
           error: 'Failed to delete story',
           details: error.message,
+        });
+      }
+    }
+
+    // GET /api/stories?id=... - Get single story by ID
+    if (method === 'GET' && req.query?.id) {
+      const { getStoryById } = require('../server/src/db');
+      const storyId = req.query.id;
+      
+      try {
+        const story = await getStoryById(storyId);
+        
+        if (!story) {
+          return res.status(404).json({ error: 'Story not found' });
+        }
+
+        const formattedStory = {
+          id: story.id,
+          title: story.title,
+          content: story.content,
+          language: story.language,
+          source: story.source,
+          tag: story.tag,
+          imageUrl: story.image_url,
+          musicUrl: story.music_url,
+          musicPrompt: story.music_prompt,
+          soundEffects: story.sound_effects,
+          isShared: story.is_shared || false,
+          createdAt: story.created_at,
+        };
+
+        return res.status(200).json(formattedStory);
+      } catch (error) {
+        console.error('Error fetching story by ID:', error);
+        return res.status(500).json({
+          error: 'Internal server error',
+          message: error.message,
         });
       }
     }

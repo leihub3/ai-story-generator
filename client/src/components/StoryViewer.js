@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import styled from '@emotion/styled';
 import './StoryViewer.css';
@@ -402,8 +403,8 @@ const MenuButton = styled(motion.button)`
 const MenuDropdown = styled(motion.div)`
   position: absolute;
   bottom: calc(100% + 0.5rem);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  transform: none;
   background: white;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
@@ -417,6 +418,27 @@ const MenuDropdown = styled(motion.div)`
   
   @media (max-width: 768px) {
     display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: none;
+    max-width: 100vw;
+    width: 100vw;
+    min-width: auto;
+    max-height: 70vh;
+    overflow-y: auto;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 1002;
+    border-radius: 20px 20px 0 0;
+    border: none;
+    border-top: 1px solid #e0e0e0;
+  }
+  
+  @media (max-width: 480px) {
+    max-height: 75vh;
+    padding: 1rem;
+    border-radius: 16px 16px 0 0;
   }
 `;
 
@@ -460,6 +482,68 @@ const MobileSpeedControl = styled(motion.div)`
   }
 `;
 
+const AudioControl = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+`;
+
+const VolumeSlider = styled.input`
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: #ddd;
+  outline: none;
+  -webkit-appearance: none;
+  
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #4ECDC4;
+    cursor: pointer;
+  }
+  
+  &::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #4ECDC4;
+    cursor: pointer;
+    border: none;
+  }
+`;
+
+const AudioButton = styled(motion.button)`
+  background: ${props => props.active ? '#4ECDC4' : '#e9ecef'};
+  color: ${props => props.active ? 'white' : '#2c3e50'};
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: 'Comic Sans MS', cursive;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  
+  &:hover {
+    background: ${props => props.active ? '#3dbeb6' : '#d6dee2'};
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+
 const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [speechRate, setSpeechRate] = useState(1);
@@ -470,10 +554,20 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  
+  // Audio state
+  const [musicVolume, setMusicVolume] = useState(0.3);
+  const [effectsVolume, setEffectsVolume] = useState(0.5);
+  const [isMusicMuted, setIsMusicMuted] = useState(false);
+  const [isEffectsMuted, setIsEffectsMuted] = useState(false);
+  const [currentStory, setCurrentStory] = useState(story);
+  
   const paragraphRefs = useRef([]);
   const storyContentRef = useRef(null);
   const menuRef = useRef(null);
   const headerMenuRef = useRef(null);
+  const backgroundMusicRef = useRef(null);
+  const soundEffectsRefs = useRef({});
 
   // Fullscreen API handlers
   useEffect(() => {
@@ -629,7 +723,7 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
     if (!isPlaying) return;
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
-    const paragraphs = story.content.split('\n');
+    const paragraphs = currentStory?.content.split('\n') || story.content.split('\n');
     if (currentParagraph >= paragraphs.length) {
       setIsPlaying(false);
       setCurrentParagraph(0);
@@ -646,7 +740,7 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
       'de': 'de-DE',
       'it': 'it-IT'
     };
-    const langCode = (story.language || 'en').toLowerCase();
+    const langCode = ((currentStory?.language || story.language) || 'en').toLowerCase();
     newUtterance.lang = languageMap[langCode] || langCode || 'en-US';
     newUtterance.rate = speechRate;
     if (selectedVoice) newUtterance.voice = selectedVoice;
@@ -699,7 +793,87 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
       setIsPlaying(false);
       setCurrentParagraph(0);
     }
+    // Stop background music
+    if (backgroundMusicRef.current) {
+      backgroundMusicRef.current.pause();
+      backgroundMusicRef.current.currentTime = 0;
+    }
+    // Stop all sound effects
+    Object.values(soundEffectsRefs.current).forEach(audio => {
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    });
   };
+
+  // Update currentStory when story prop changes
+  useEffect(() => {
+    setCurrentStory(story);
+  }, [story]);
+
+  // Initialize background music
+  useEffect(() => {
+    if (currentStory?.musicUrl && !backgroundMusicRef.current) {
+      const audio = new Audio(currentStory.musicUrl);
+      audio.loop = true;
+      audio.volume = isMusicMuted ? 0 : musicVolume;
+      backgroundMusicRef.current = audio;
+    } else if (currentStory?.musicUrl && backgroundMusicRef.current) {
+      backgroundMusicRef.current.src = currentStory.musicUrl;
+      backgroundMusicRef.current.load();
+    }
+
+    return () => {
+      if (backgroundMusicRef.current) {
+        backgroundMusicRef.current.pause();
+        backgroundMusicRef.current = null;
+      }
+    };
+  }, [currentStory?.musicUrl, musicVolume, isMusicMuted]);
+
+  // Update music volume
+  useEffect(() => {
+    if (backgroundMusicRef.current) {
+      backgroundMusicRef.current.volume = isMusicMuted ? 0 : musicVolume;
+    }
+  }, [musicVolume, isMusicMuted]);
+
+  // Play background music when reading starts
+  useEffect(() => {
+    if (isPlaying && currentStory?.musicUrl && backgroundMusicRef.current) {
+      backgroundMusicRef.current.play().catch(err => {
+        console.error('Error playing background music:', err);
+      });
+    } else if (!isPlaying && backgroundMusicRef.current) {
+      backgroundMusicRef.current.pause();
+    }
+  }, [isPlaying, currentStory?.musicUrl]);
+
+  // Play sound effects at specific paragraphs
+  useEffect(() => {
+    if (!isPlaying || !currentStory?.soundEffects) return;
+
+    const soundEffect = currentStory.soundEffects.find(
+      effect => effect.paragraph === currentParagraph
+    );
+
+    if (soundEffect && soundEffect.url) {
+      // Create or reuse audio element for this effect
+      if (!soundEffectsRefs.current[currentParagraph]) {
+        const audio = new Audio(soundEffect.url);
+        audio.volume = isEffectsMuted ? 0 : (effectsVolume * (soundEffect.volume || 1));
+        soundEffectsRefs.current[currentParagraph] = audio;
+      }
+
+      const audio = soundEffectsRefs.current[currentParagraph];
+      audio.volume = isEffectsMuted ? 0 : (effectsVolume * (soundEffect.volume || 1));
+      audio.play().catch(err => {
+        console.error('Error playing sound effect:', err);
+      });
+    }
+  }, [currentParagraph, isPlaying, currentStory?.soundEffects, effectsVolume, isEffectsMuted]);
+
 
   const handleVoiceChange = (eOrOption) => {
     const voice = voices.find(v => v.name === (eOrOption.value || eOrOption.target.value));
@@ -742,12 +916,12 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
       const imageWidth = 70; // Width in mm for image on the right
       const imageX = pageWidth - margin - imageWidth;
 
-      if (story.imageUrl) {
+      if (currentStory?.imageUrl || story.imageUrl) {
         try {
           const response = await fetch(`${API_URL}/stories/image-proxy`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageUrl: story.imageUrl })
+            body: JSON.stringify({ imageUrl: currentStory?.imageUrl || story.imageUrl })
           });
           
           if (response.ok) {
@@ -1040,14 +1214,31 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
               ⋮
             </MenuButton>
 
-            <AnimatePresence>
-              {mobileMenuOpen && (
-                <MenuDropdown
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
-                >
+            {mobileMenuOpen && typeof document !== 'undefined' && createPortal(
+              <AnimatePresence>
+                <>
+                  <motion.div
+                    style={{
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'rgba(0, 0, 0, 0.3)',
+                      zIndex: 1001,
+                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setMobileMenuOpen(false)}
+                  />
+                  <MenuDropdown
+                    initial={{ opacity: 0, y: '100%' }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: '100%' }}
+                    transition={{ duration: 0.3, type: 'spring', damping: 25 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                   <MenuSection>
                     <MenuSectionLabel>Voice</MenuSectionLabel>
                     <MobileVoiceSelectWrapper>
@@ -1057,7 +1248,9 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
                         onChange={handleVoiceChange}
                         placeholder="Select voice..."
                         isSearchable
-                        menuPlacement="top"
+                        menuPlacement="auto"
+                        menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                        menuPosition="fixed"
                         styles={{
                           control: (base) => ({
                             ...base,
@@ -1069,12 +1262,24 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
                             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                             border: '1px solid #e0e0e0',
                           }),
-                          menu: (base) => ({ ...base, zIndex: 9999 }),
+                          menuPortal: (base) => ({ ...base, zIndex: 1003 }),
+                          menu: (base) => ({ 
+                            ...base, 
+                            zIndex: 1003,
+                            maxHeight: '300px',
+                          }),
+                          menuList: (base) => ({
+                            ...base,
+                            maxHeight: '300px',
+                            padding: '0.5rem',
+                          }),
                           option: (base, state) => ({
                             ...base,
                             background: state.isSelected ? '#4ECDC4' : state.isFocused ? '#e0e0e0' : '#fff',
                             color: state.isSelected ? 'white' : '#2c3e50',
                             fontFamily: 'Comic Sans MS, cursive',
+                            padding: '0.75rem',
+                            cursor: 'pointer',
                           }),
                         }}
                       />
@@ -1124,9 +1329,62 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
                       </SpeedButton>
                     </MobileSpeedControl>
                   </MenuSection>
-                </MenuDropdown>
-              )}
-            </AnimatePresence>
+                  
+                  {/* Audio Controls Section */}
+                  {currentStory?.musicUrl || currentStory?.soundEffects ? (
+                    <>
+                      <MenuSection>
+                        <MenuSectionLabel>Audio</MenuSectionLabel>
+                        {currentStory?.musicUrl && (
+                          <AudioControl>
+                            <span style={{ fontSize: '1.2rem' }}>🎵</span>
+                            <VolumeSlider
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.1"
+                              value={musicVolume}
+                              onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                            />
+                            <AudioButton
+                              onClick={() => setIsMusicMuted(!isMusicMuted)}
+                              active={!isMusicMuted}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              {isMusicMuted ? '🔇' : '🔊'}
+                            </AudioButton>
+                          </AudioControl>
+                        )}
+                        {currentStory?.soundEffects && currentStory.soundEffects.length > 0 && (
+                          <AudioControl>
+                            <span style={{ fontSize: '1.2rem' }}>🔊</span>
+                            <VolumeSlider
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.1"
+                              value={effectsVolume}
+                              onChange={(e) => setEffectsVolume(parseFloat(e.target.value))}
+                            />
+                            <AudioButton
+                              onClick={() => setIsEffectsMuted(!isEffectsMuted)}
+                              active={!isEffectsMuted}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              {isEffectsMuted ? '🔇' : '🔊'}
+                            </AudioButton>
+                          </AudioControl>
+                        )}
+                      </MenuSection>
+                    </>
+                  ) : null}
+                  </MenuDropdown>
+                </>
+              </AnimatePresence>,
+              document.body
+            )}
 
             <LanguageTag
               whileHover={{ scale: 1.05 }}
