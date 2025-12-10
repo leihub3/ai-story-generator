@@ -60,13 +60,13 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('Error proxying image:', {
       message: error.message,
-      response: error.response?.status,
-      data: error.response?.data,
+      response: error.response && error.response.status,
+      data: error.response && error.response.data,
     });
     return res.status(500).json({
       error: 'Failed to load image',
       details: error.message,
-      status: error.response?.status,
+      status: error.response && error.response.status,
     });
   }
 };

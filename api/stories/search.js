@@ -8,10 +8,13 @@ const { incrementRateLimitAfterGeneration } = require('../../server/src/middlewa
 
 // Helper to get IP address in serverless environment
 function getIpAddress(req) {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const firstIp = forwardedFor && forwardedFor.split(',')[0];
+  const trimmedIp = firstIp && firstIp.trim();
   return (
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    trimmedIp ||
     req.headers['x-real-ip'] ||
-    req.socket?.remoteAddress ||
+    (req.socket && req.socket.remoteAddress) ||
     'unknown'
   );
 }
@@ -179,8 +182,8 @@ module.exports = async (req, res) => {
           console.error('❌ [IMAGE] Error downloading/converting image to Base64:', downloadError.message);
           console.error('❌ [IMAGE] Download error details:', {
             message: downloadError.message,
-            response: downloadError.response?.status,
-            data: downloadError.response?.data,
+            response: downloadError.response && downloadError.response.status,
+            data: downloadError.response && downloadError.response.data,
           });
           // Fallback to URL if Base64 conversion fails
           console.log('⚠️ [IMAGE] Falling back to URL storage');
@@ -189,8 +192,8 @@ module.exports = async (req, res) => {
       } catch (error) {
         console.error('❌ [IMAGE] DALL-E API error occurred');
         console.error('❌ [IMAGE] Error message:', error.message);
-        console.error('❌ [IMAGE] Error response status:', error.response?.status);
-        console.error('❌ [IMAGE] Error response data:', JSON.stringify(error.response?.data, null, 2));
+        console.error('❌ [IMAGE] Error response status:', error.response && error.response.status);
+        console.error('❌ [IMAGE] Error response data:', JSON.stringify(error.response && error.response.data, null, 2));
         console.error('❌ [IMAGE] Full error:', error);
         
         // Continue without image if generation fails - story will still be generated
@@ -237,36 +240,11 @@ module.exports = async (req, res) => {
     });
   } catch (error) {
     console.error('Search endpoint error:', error);
-    return res.status(error.response?.status || 500).json({
+    const statusCode = (error.response && error.response.status) || 500;
+    const errorMessage = (error.response && error.response.data && error.response.data.message) || error.message;
+    return res.status(statusCode).json({
       error: 'Search failed',
-      details: error.response?.data?.message || error.message,
-    });
-  }
-};
-
-
-      source: savedStory.source,
-      imageUrl: savedStory.image_url,
-      musicUrl: null,
-      musicPrompt: null,
-      soundEffects: null,
-      createdAt: savedStory.created_at,
-    };
-
-    // Reuse isDevelopment and rateLimit from above (declared at line 57-58)
-    res.setHeader('X-RateLimit-Remaining', updatedLimit.remaining);
-    res.setHeader('X-RateLimit-Reset', updatedLimit.resetDate.toISOString());
-    res.setHeader('X-RateLimit-Limit', rateLimit);
-
-    return res.status(200).json({
-      query,
-      results: [story],
-    });
-  } catch (error) {
-    console.error('Search endpoint error:', error);
-    return res.status(error.response?.status || 500).json({
-      error: 'Search failed',
-      details: error.response?.data?.message || error.message,
+      details: errorMessage,
     });
   }
 };

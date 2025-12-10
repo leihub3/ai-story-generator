@@ -14,10 +14,13 @@ const {
 
 // Helper to get IP address in serverless environment
 function getIpAddress(req) {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const firstIp = forwardedFor && forwardedFor.split(',')[0];
+  const trimmedIp = firstIp && firstIp.trim();
   return (
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    trimmedIp ||
     req.headers['x-real-ip'] ||
-    req.socket?.remoteAddress ||
+    (req.socket && req.socket.remoteAddress) ||
     'unknown'
   );
 }
@@ -77,7 +80,7 @@ module.exports = async (req, res) => {
 
   try {
     // Simple diagnostics endpoint: GET /api/stories?test=1 or /api/stories/test (when routed)
-    if (path.endsWith('/test') || path.includes('/api/stories/test') || path.includes('/test') || req.query?.test === '1') {
+    if (path.endsWith('/test') || path.includes('/api/stories/test') || path.includes('/test') || (req.query && req.query.test === '1')) {
       return res.status(200).json({
         status: 'ok',
         message: 'Stories serverless API running without Express',
@@ -95,8 +98,8 @@ module.exports = async (req, res) => {
       path.endsWith('/rate-limit') || 
       path.includes('/api/stories/rate-limit') || 
       path.includes('/rate-limit') ||
-      req.query?.rateLimit === '1' ||
-      req.query?.rateLimit === 'true';
+      (req.query && req.query.rateLimit === '1') ||
+      (req.query && req.query.rateLimit === 'true');
     
     if (method === 'GET' && isRateLimitPath) {
       const ipAddress = getIpAddress(req);
@@ -250,7 +253,7 @@ module.exports = async (req, res) => {
       }
       // Try query params as fallback
       if (!id) {
-        id = req.query?.id || req.query?.delete;
+        id = (req.query && req.query.id) || (req.query && req.query.delete);
       }
 
       console.log('DELETE request - extracted ID:', { id, path, query: req.query });
@@ -275,7 +278,7 @@ module.exports = async (req, res) => {
     }
 
     // GET /api/stories?id=... - Get single story by ID
-    if (method === 'GET' && req.query?.id) {
+    if (method === 'GET' && req.query && req.query.id) {
       const { getStoryById } = require('../server/src/db');
       const storyId = req.query.id;
       

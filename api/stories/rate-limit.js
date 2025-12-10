@@ -7,9 +7,9 @@ const { checkRateLimit } = require('../../server/src/db');
 // Helper to get IP address in serverless environment
 function getIpAddress(req) {
   return (
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    (req.headers['x-forwarded-for'] && req.headers['x-forwarded-for'].split(',')[0] && req.headers['x-forwarded-for'].split(',')[0].trim()) ||
     req.headers['x-real-ip'] ||
-    req.socket?.remoteAddress ||
+    (req.socket && req.socket.remoteAddress) ||
     'unknown'
   );
 }

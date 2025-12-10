@@ -73,13 +73,15 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('DeepL API error:', {
       message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
+      response: error.response && error.response.data,
+      status: error.response && error.response.status,
     });
 
-    return res.status(error.response?.status || 500).json({
+    const statusCode = (error.response && error.response.status) || 500;
+    const errorMessage = (error.response && error.response.data && error.response.data.message) || error.message;
+    return res.status(statusCode).json({
       error: 'Translation failed',
-      details: error.response?.data?.message || error.message,
+      details: errorMessage,
     });
   }
 };

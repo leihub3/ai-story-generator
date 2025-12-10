@@ -90,7 +90,7 @@ module.exports = async (req, res) => {
   }
 
   // Extract ID from query params or path
-  let id = req.query?.id;
+  let id = req.query && req.query.id;
   
   // For delete, also check path and headers
   if (!id && action === 'delete') {
@@ -158,7 +158,7 @@ module.exports = async (req, res) => {
         hasTitle: !!updates.title,
         hasContent: !!updates.content,
         hasImageUrl: !!updates.imageUrl,
-        imageUrlLength: updates.imageUrl?.length || 0
+        imageUrlLength: (updates.imageUrl && updates.imageUrl.length) || 0
       });
 
       const updatedStory = await updateStory(id, updates);
@@ -232,13 +232,15 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method Not Allowed' });
     
   } catch (error) {
-    console.error(`❌ [${action?.toUpperCase() || 'UNKNOWN'}] Endpoint error:`, error);
-    console.error(`❌ [${action?.toUpperCase() || 'UNKNOWN'}] Error stack:`, error.stack);
-    console.error(`❌ [${action?.toUpperCase() || 'UNKNOWN'}] Error message:`, error.message);
+    const actionUpper = (action && action.toUpperCase()) || 'UNKNOWN';
+    console.error(`❌ [${actionUpper}] Endpoint error:`, error);
+    console.error(`❌ [${actionUpper}] Error stack:`, error.stack);
+    console.error(`❌ [${actionUpper}] Error message:`, error.message);
     
     // Check if it's a database error
     if (error.code) {
-      console.error(`❌ [${action?.toUpperCase() || 'UNKNOWN'}] Database error code:`, error.code);
+      const actionUpper = (action && action.toUpperCase()) || 'UNKNOWN';
+      console.error(`❌ [${actionUpper}] Database error code:`, error.code);
     }
     
     return res.status(500).json({
