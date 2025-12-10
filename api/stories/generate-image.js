@@ -13,17 +13,16 @@ function setCorsHeaders(res) {
 }
 
 module.exports = async (req, res) => {
-  // Always set CORS headers first
-  setCorsHeaders(res);
-
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    console.log('OPTIONS preflight request received for GENERATE-IMAGE endpoint');
-    return res.status(200).end();
-  }
-
-  // Wrap everything in try-catch to ensure we always return JSON
+  // Wrap everything in try-catch to ensure we always return JSON, even for unexpected errors
   try {
+    // Always set CORS headers first
+    setCorsHeaders(res);
+
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+      console.log('OPTIONS preflight request received for GENERATE-IMAGE endpoint');
+      return res.status(200).end();
+    }
     const { method } = req;
 
     console.log('=== POST /api/stories/generate-image Handler Called ===');
@@ -43,6 +42,16 @@ module.exports = async (req, res) => {
         error: 'Story ID is required',
       });
     }
+
+    // Validate OpenAI API key
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY is not configured');
+      return res.status(500).json({
+        error: 'Server configuration error',
+        details: 'OpenAI API key is not configured',
+      });
+    }
+
     // Get the story to use its title/content for image generation
     const story = await getStoryById(storyId);
     
@@ -206,15 +215,17 @@ module.exports = async (req, res) => {
       details: userFriendlyMessage,
       statusCode: statusCode,
     });
-  } catch (outerError) {
-    // Catch any unexpected errors that might occur outside the main try-catch
-    console.error('Unexpected error in generate-image endpoint:', outerError);
-    console.error('Error stack:', outerError.stack);
+  } catch (unhandledError) {
+    // Catch any unexpected errors that might occur (e.g., syntax errors, module loading errors)
+    console.error('❌ [GENERATE-IMAGE] Unhandled error in generate-image endpoint:', unhandledError);
+    console.error('❌ [GENERATE-IMAGE] Error stack:', unhandledError?.stack);
+    console.error('❌ [GENERATE-IMAGE] Error name:', unhandledError?.name);
+    console.error('❌ [GENERATE-IMAGE] Error message:', unhandledError?.message);
     
     // Always return JSON, never HTML
     return res.status(500).json({
       error: 'An unexpected error occurred',
-      details: outerError.message || 'Please try again later.',
+      details: unhandledError?.message || 'Please try again later.',
     });
   }
 };
