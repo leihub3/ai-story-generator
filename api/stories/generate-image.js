@@ -22,27 +22,27 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  const { method } = req;
-
-  console.log('=== POST /api/stories/generate-image Handler Called ===');
-  console.log('Method:', method);
-  console.log('Body:', req.body);
-
-  if (method !== 'POST') {
-    res.setHeader('Allow', ['POST', 'OPTIONS']);
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
-  // Extract story ID from request body
-  const { storyId } = req.body || {};
-
-  if (!storyId) {
-    return res.status(400).json({ 
-      error: 'Story ID is required',
-    });
-  }
-
+  // Wrap everything in try-catch to ensure we always return JSON
   try {
+    const { method } = req;
+
+    console.log('=== POST /api/stories/generate-image Handler Called ===');
+    console.log('Method:', method);
+    console.log('Body:', req.body);
+
+    if (method !== 'POST') {
+      res.setHeader('Allow', ['POST', 'OPTIONS']);
+      return res.status(405).json({ error: 'Method Not Allowed' });
+    }
+
+    // Extract story ID from request body
+    const { storyId } = req.body || {};
+
+    if (!storyId) {
+      return res.status(400).json({ 
+        error: 'Story ID is required',
+      });
+    }
     // Get the story to use its title/content for image generation
     const story = await getStoryById(storyId);
     
@@ -205,6 +205,16 @@ module.exports = async (req, res) => {
       error: 'Failed to generate image',
       details: userFriendlyMessage,
       statusCode: statusCode,
+    });
+  } catch (outerError) {
+    // Catch any unexpected errors that might occur outside the main try-catch
+    console.error('Unexpected error in generate-image endpoint:', outerError);
+    console.error('Error stack:', outerError.stack);
+    
+    // Always return JSON, never HTML
+    return res.status(500).json({
+      error: 'An unexpected error occurred',
+      details: outerError.message || 'Please try again later.',
     });
   }
 };

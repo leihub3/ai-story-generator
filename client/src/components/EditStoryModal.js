@@ -227,27 +227,39 @@ const EditStoryModal = ({ story, onCancel, onSave, isSaving }) => {
         body: JSON.stringify({ storyId: story.id }),
       });
 
+      // Always get text first to handle both JSON and HTML responses
+      const responseText = await response.text();
+      
       if (!response.ok) {
         // Try to parse JSON error; if it fails, fall back to plain text
         let errorMessage = 'Failed to generate image';
         try {
-          const text = await response.text();
-          try {
-            const errorData = JSON.parse(text);
-            errorMessage = errorData.error || errorData.details || errorMessage;
-          } catch {
-            // Not JSON, use raw text
-            if (text && text.trim().length > 0) {
-              errorMessage = text.trim();
-            }
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch {
+          // Not JSON, might be HTML error page from Vercel
+          // Extract meaningful text or use generic message
+          if (responseText.includes('server error') || responseText.includes('500')) {
+            errorMessage = 'Server error occurred. Please try again later.';
+          } else if (responseText.trim().length > 0 && responseText.length < 200) {
+            // Use text if it's short and meaningful
+            errorMessage = responseText.trim();
+          } else {
+            errorMessage = `Server returned error ${response.status}. Please try again.`;
           }
-        } catch (parseError) {
-          console.error('Error parsing generate-image error response:', parseError);
         }
         throw new Error(errorMessage);
       }
 
-      const updatedStory = await response.json();
+      // Parse successful response
+      let updatedStory;
+      try {
+        updatedStory = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Error parsing generate-image success response:', parseError);
+        throw new Error('Invalid response from server. Please try again.');
+      }
+      
       setCurrentImageUrl(updatedStory.imageUrl);
     } catch (err) {
       console.error('Error generating image:', err);
