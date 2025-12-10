@@ -217,7 +217,7 @@ module.exports = async (req, res) => {
     });
 
     const story = {
-      id: savedStory.id, // Use database ID instead of timestamp
+      id: savedStory.id,
       title: savedStory.title,
       content: savedStory.content,
       language: savedStory.language,
@@ -248,4 +248,3 @@ module.exports = async (req, res) => {
     });
   }
 };
-
