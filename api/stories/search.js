@@ -244,3 +244,30 @@ module.exports = async (req, res) => {
   }
 };
 
+
+      source: savedStory.source,
+      imageUrl: savedStory.image_url,
+      musicUrl: null,
+      musicPrompt: null,
+      soundEffects: null,
+      createdAt: savedStory.created_at,
+    };
+
+    // Reuse isDevelopment and rateLimit from above (declared at line 57-58)
+    res.setHeader('X-RateLimit-Remaining', updatedLimit.remaining);
+    res.setHeader('X-RateLimit-Reset', updatedLimit.resetDate.toISOString());
+    res.setHeader('X-RateLimit-Limit', rateLimit);
+
+    return res.status(200).json({
+      query,
+      results: [story],
+    });
+  } catch (error) {
+    console.error('Search endpoint error:', error);
+    return res.status(error.response?.status || 500).json({
+      error: 'Search failed',
+      details: error.response?.data?.message || error.message,
+    });
+  }
+};
+
