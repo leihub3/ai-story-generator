@@ -95,4 +95,37 @@
     justify-content: center;
     margin-top: 0.5rem;
   }
+
+  /* Hide desktop header elements on mobile */
+  .desktop-header-content,
+  .desktop-header-actions,
+  .desktop-title {
+    display: none !important;
+  }
+
+  /* Show mobile header elements */
+  .mobile-header-top {
+    display: flex !important;
+  }
+
+  .mobile-title {
+    display: block !important;
+  }
+}
+
+/* Desktop: Hide mobile elements */
+@media (min-width: 769px) {
+  .mobile-header-top,
+  .mobile-title {
+    display: none !important;
+  }
+
+  .desktop-header-content,
+  .desktop-header-actions {
+    display: flex !important;
+  }
+
+  .desktop-title {
+    display: block !important;
+  }
 } 

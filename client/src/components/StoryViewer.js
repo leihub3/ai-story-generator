@@ -55,6 +55,14 @@ const ViewerHeader = styled(motion.div)`
   justify-content: space-between;
   align-items: center;
   border-bottom: 4px solid #FFE66D;
+  gap: 1rem;
+  
+  @media (max-width: 768px) {
+    padding: 0.5rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+  }
 `;
 
 const StoryTitle = styled(motion.h2)`
@@ -62,6 +70,11 @@ const StoryTitle = styled(motion.h2)`
   font-size: 1.8rem;
   font-family: 'Comic Sans MS', cursive;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  
+  @media (max-width: 768px) {
+    font-size: 1.5rem;
+    width: 100%;
+  }
 `;
 
 const CloseButton = styled(motion.button)`
@@ -171,6 +184,10 @@ const StoryHeaderIcon = styled(motion.img)`
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   margin-right: 0.75rem;
+  
+  @media (max-width: 768px) {
+    display: none;
+  }
 `;
 
 const StoryImage = styled(motion.img)`
@@ -566,6 +583,7 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
   const storyContentRef = useRef(null);
   const menuRef = useRef(null);
   const headerMenuRef = useRef(null);
+  const mobileHeaderMenuRef = useRef(null);
   const backgroundMusicRef = useRef(null);
   const soundEffectsRefs = useRef({});
 
@@ -628,8 +646,12 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
       if (mobileMenuOpen && menuRef.current && !menuRef.current.contains(event.target)) {
         setMobileMenuOpen(false);
       }
-      if (headerMenuOpen && headerMenuRef.current && !headerMenuRef.current.contains(event.target)) {
-        setHeaderMenuOpen(false);
+      if (headerMenuOpen) {
+        const desktopMenu = headerMenuRef.current && headerMenuRef.current.contains(event.target);
+        const mobileMenu = mobileHeaderMenuRef.current && mobileHeaderMenuRef.current.contains(event.target);
+        if (!desktopMenu && !mobileMenu) {
+          setHeaderMenuOpen(false);
+        }
       }
     };
 
@@ -1042,7 +1064,8 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
         style={{ position: 'relative' }}
       >
         <ViewerHeader>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+          {/* Desktop layout */}
+          <div style={{ display: 'flex', alignItems: 'center', flex: 1 }} className="desktop-header-content" ref={headerMenuRef}>
             {onBack && (
               <motion.button
                 onClick={onBack}
@@ -1095,11 +1118,106 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
+              className="desktop-title"
             >
               {story.title}
             </StoryTitle>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative' }} ref={headerMenuRef}>
+          
+          {/* Mobile: Top row with menu and close */}
+          <div 
+            style={{ 
+              display: 'none',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              gap: '0.5rem',
+              position: 'relative',
+              width: '100%'
+            }}
+            className="mobile-header-top"
+            ref={mobileHeaderMenuRef}
+          >
+            <HeaderMenuButton
+              onClick={(e) => {
+                e.stopPropagation();
+                setHeaderMenuOpen(!headerMenuOpen);
+              }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              aria-label="More options"
+              title="More options"
+            >
+              ⋮
+            </HeaderMenuButton>
+            
+            <AnimatePresence>
+              {headerMenuOpen && (
+                <HeaderMenuDropdown
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <HeaderMenuItem
+                    onClick={() => {
+                      exportToPDF();
+                      setHeaderMenuOpen(false);
+                    }}
+                    disabled={isExporting}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <span>{isExporting ? '⏳' : '📄'}</span>
+                    <span>{isExporting ? 'Exporting...' : 'Export to PDF'}</span>
+                  </HeaderMenuItem>
+                  <HeaderMenuItem
+                    onClick={() => {
+                      toggleFullscreen();
+                      setHeaderMenuOpen(false);
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <span>{isFullscreen ? '🗗' : '🗖'}</span>
+                    <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
+                  </HeaderMenuItem>
+                </HeaderMenuDropdown>
+              )}
+            </AnimatePresence>
+            
+            <CloseButton
+              onClick={onClose}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onClose();
+                }
+              }}
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
+              aria-label="Close story viewer"
+              title="Close"
+            >
+              &times;
+            </CloseButton>
+          </div>
+          
+          {/* Mobile: Title row */}
+          <StoryTitle
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="mobile-title"
+            style={{ display: 'none' }}
+          >
+            {story.title}
+          </StoryTitle>
+          
+          {/* Desktop: Right side menu and close */}
+          <div 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative' }} 
+            className="desktop-header-actions"
+          >
             <HeaderMenuButton
               onClick={(e) => {
                 e.stopPropagation();
