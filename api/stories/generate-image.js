@@ -90,14 +90,14 @@ module.exports = async (req, res) => {
       );
     } catch (axiosError) {
       // Log the full error response from OpenAI
-      const errorData = axiosError.response?.data;
-      const errorMessage = errorData?.error?.message || axiosError.message;
-      const errorType = errorData?.error?.type || 'unknown';
-      const errorCode = errorData?.error?.code || axiosError.response?.status;
+      const errorData = axiosError.response && axiosError.response.data;
+      const errorMessage = (errorData && errorData.error && errorData.error.message) || axiosError.message;
+      const errorType = (errorData && errorData.error && errorData.error.type) || 'unknown';
+      const errorCode = (errorData && errorData.error && errorData.error.code) || (axiosError.response && axiosError.response.status);
       
       console.error('DALL-E API error details:', {
-        status: axiosError.response?.status,
-        statusText: axiosError.response?.statusText,
+        status: axiosError.response && axiosError.response.status,
+        statusText: axiosError.response && axiosError.response.statusText,
         errorType,
         errorCode,
         errorMessage,
@@ -108,12 +108,12 @@ module.exports = async (req, res) => {
       
       // Re-throw with more context
       const detailedError = new Error(errorMessage || `OpenAI API error: Status ${errorCode || 'unknown'}`);
-      detailedError.statusCode = axiosError.response?.status;
+      detailedError.statusCode = axiosError.response && axiosError.response.status;
       detailedError.errorData = errorData;
       throw detailedError;
     }
 
-    if (!imageResponse?.data?.data?.[0]?.url) {
+    if (!imageResponse || !imageResponse.data || !imageResponse.data.data || !imageResponse.data.data[0] || !imageResponse.data.data[0].url) {
       throw new Error('Invalid response from OpenAI: missing image URL');
     }
 
@@ -143,8 +143,8 @@ module.exports = async (req, res) => {
       console.error('❌ [GENERATE-IMAGE] Error downloading/converting image to Base64:', downloadError.message);
       console.error('❌ [GENERATE-IMAGE] Download error details:', {
         message: downloadError.message,
-        response: downloadError.response?.status,
-        data: downloadError.response?.data,
+        response: downloadError.response && downloadError.response.status,
+        data: downloadError.response && downloadError.response.data,
       });
       // Fallback to URL if Base64 conversion fails
       console.log('⚠️ [GENERATE-IMAGE] Falling back to URL storage');
@@ -177,8 +177,8 @@ module.exports = async (req, res) => {
     
     // Extract error details from OpenAI response
     const errorMessage = error.message || 'Unknown error';
-    const openAIError = error.errorData?.error || error.response?.data?.error;
-    const statusCode = error.statusCode || error.response?.status || 500;
+    const openAIError = (error.errorData && error.errorData.error) || (error.response && error.response.data && error.response.data.error);
+    const statusCode = error.statusCode || (error.response && error.response.status) || 500;
     
     // Log full error for debugging
     if (error.errorData) {
@@ -189,26 +189,26 @@ module.exports = async (req, res) => {
     if (statusCode === 429) {
       return res.status(429).json({
         error: 'Rate limit exceeded. Please try again later.',
-        details: openAIError?.message || errorMessage,
+        details: (openAIError && openAIError.message) || errorMessage,
       });
     }
     
     if (statusCode === 400) {
       return res.status(400).json({
         error: 'Invalid image generation request',
-        details: openAIError?.message || errorMessage,
+        details: (openAIError && openAIError.message) || errorMessage,
       });
     }
     
     if (statusCode === 500 || statusCode === 503) {
       return res.status(503).json({
         error: 'OpenAI service is temporarily unavailable. Please try again later.',
-        details: openAIError?.message || errorMessage || 'The image generation service encountered an error. Please try again in a few moments.',
+        details: (openAIError && openAIError.message) || errorMessage || 'The image generation service encountered an error. Please try again in a few moments.',
       });
     }
 
     // Return the error message from OpenAI if available
-    const userFriendlyMessage = openAIError?.message || errorMessage;
+    const userFriendlyMessage = (openAIError && openAIError.message) || errorMessage;
     
     return res.status(statusCode >= 400 && statusCode < 500 ? statusCode : 500).json({
       error: 'Failed to generate image',
@@ -218,14 +218,14 @@ module.exports = async (req, res) => {
   } catch (unhandledError) {
     // Catch any unexpected errors that might occur (e.g., syntax errors, module loading errors)
     console.error('❌ [GENERATE-IMAGE] Unhandled error in generate-image endpoint:', unhandledError);
-    console.error('❌ [GENERATE-IMAGE] Error stack:', unhandledError?.stack);
-    console.error('❌ [GENERATE-IMAGE] Error name:', unhandledError?.name);
-    console.error('❌ [GENERATE-IMAGE] Error message:', unhandledError?.message);
+    console.error('❌ [GENERATE-IMAGE] Error stack:', unhandledError && unhandledError.stack);
+    console.error('❌ [GENERATE-IMAGE] Error name:', unhandledError && unhandledError.name);
+    console.error('❌ [GENERATE-IMAGE] Error message:', unhandledError && unhandledError.message);
     
     // Always return JSON, never HTML
     return res.status(500).json({
       error: 'An unexpected error occurred',
-      details: unhandledError?.message || 'Please try again later.',
+      details: (unhandledError && unhandledError.message) || 'Please try again later.',
     });
   }
 };
