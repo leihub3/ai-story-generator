@@ -228,8 +228,23 @@ const EditStoryModal = ({ story, onCancel, onSave, isSaving }) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate image');
+        // Try to parse JSON error; if it fails, fall back to plain text
+        let errorMessage = 'Failed to generate image';
+        try {
+          const text = await response.text();
+          try {
+            const errorData = JSON.parse(text);
+            errorMessage = errorData.error || errorData.details || errorMessage;
+          } catch {
+            // Not JSON, use raw text
+            if (text && text.trim().length > 0) {
+              errorMessage = text.trim();
+            }
+          }
+        } catch (parseError) {
+          console.error('Error parsing generate-image error response:', parseError);
+        }
+        throw new Error(errorMessage);
       }
 
       const updatedStory = await response.json();

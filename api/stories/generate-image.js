@@ -208,35 +208,3 @@ module.exports = async (req, res) => {
     });
   }
 };
-
-
-        error: 'Rate limit exceeded. Please try again later.',
-        details: openAIError?.message || errorMessage,
-      });
-    }
-    
-    if (statusCode === 400) {
-      return res.status(400).json({
-        error: 'Invalid image generation request',
-        details: openAIError?.message || errorMessage,
-      });
-    }
-    
-    if (statusCode === 500 || statusCode === 503) {
-      return res.status(503).json({
-        error: 'OpenAI service is temporarily unavailable. Please try again later.',
-        details: openAIError?.message || errorMessage || 'The image generation service encountered an error. Please try again in a few moments.',
-      });
-    }
-
-    // Return the error message from OpenAI if available
-    const userFriendlyMessage = openAIError?.message || errorMessage;
-    
-    return res.status(statusCode >= 400 && statusCode < 500 ? statusCode : 500).json({
-      error: 'Failed to generate image',
-      details: userFriendlyMessage,
-      statusCode: statusCode,
-    });
-  }
-};
-
