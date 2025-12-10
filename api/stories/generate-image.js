@@ -215,17 +215,5 @@ module.exports = async (req, res) => {
       details: userFriendlyMessage,
       statusCode: statusCode,
     });
-  } catch (unhandledError) {
-    // Catch any unexpected errors that might occur (e.g., syntax errors, module loading errors)
-    console.error('❌ [GENERATE-IMAGE] Unhandled error in generate-image endpoint:', unhandledError);
-    console.error('❌ [GENERATE-IMAGE] Error stack:', unhandledError && unhandledError.stack);
-    console.error('❌ [GENERATE-IMAGE] Error name:', unhandledError && unhandledError.name);
-    console.error('❌ [GENERATE-IMAGE] Error message:', unhandledError && unhandledError.message);
-    
-    // Always return JSON, never HTML
-    return res.status(500).json({
-      error: 'An unexpected error occurred',
-      details: (unhandledError && unhandledError.message) || 'Please try again later.',
-    });
   }
 };
