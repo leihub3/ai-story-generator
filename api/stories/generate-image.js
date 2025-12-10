@@ -108,10 +108,41 @@ module.exports = async (req, res) => {
       throw new Error('Invalid response from OpenAI: missing image URL');
     }
 
-    const imageUrl = imageResponse.data.data[0].url;
-    console.log('Image generated successfully:', imageUrl);
+    const imageUrlFromDalle = imageResponse.data.data[0].url;
+    console.log('✅ [GENERATE-IMAGE] Image generated successfully:', imageUrlFromDalle);
 
-    // Update the story with the new image URL
+    // Download the image and convert to Base64
+    let imageUrl = imageUrlFromDalle; // Fallback to URL if conversion fails
+    try {
+      console.log('📥 [GENERATE-IMAGE] Downloading image to convert to Base64...');
+      const imageDownloadResponse = await axios.get(imageUrlFromDalle, {
+        responseType: 'arraybuffer',
+        timeout: 30000, // 30 second timeout for image download
+      });
+      
+      // Convert arraybuffer to Base64
+      const imageBuffer = Buffer.from(imageDownloadResponse.data);
+      const base64String = imageBuffer.toString('base64');
+      
+      // Determine image format from content-type or default to png
+      const contentType = imageDownloadResponse.headers['content-type'] || 'image/png';
+      
+      // Create data URI
+      imageUrl = `data:${contentType};base64,${base64String}`;
+      console.log('✅ [GENERATE-IMAGE] Image converted to Base64 successfully. Size:', base64String.length, 'characters');
+    } catch (downloadError) {
+      console.error('❌ [GENERATE-IMAGE] Error downloading/converting image to Base64:', downloadError.message);
+      console.error('❌ [GENERATE-IMAGE] Download error details:', {
+        message: downloadError.message,
+        response: downloadError.response?.status,
+        data: downloadError.response?.data,
+      });
+      // Fallback to URL if Base64 conversion fails
+      console.log('⚠️ [GENERATE-IMAGE] Falling back to URL storage');
+      imageUrl = imageUrlFromDalle;
+    }
+
+    // Update the story with the new image (Base64 or URL)
     const updatedStory = await updateStory(storyId, { imageUrl });
 
     if (!updatedStory) {

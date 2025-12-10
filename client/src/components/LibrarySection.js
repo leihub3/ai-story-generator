@@ -508,22 +508,43 @@ const LibrarySection = ({ onSelectStory, refreshKey }) => {
       setIsSavingEdit(true);
       setError(null);
       
+      // Prepare the payload
+      const payload = {
+        title: editedStory.title,
+        content: editedStory.content,
+        imageUrl: editedStory.imageUrl,
+      };
+      
+      // Log payload size for debugging
+      const payloadString = JSON.stringify(payload);
+      const payloadSize = new Blob([payloadString]).size;
+      console.log('💾 [SAVE-EDIT] Saving story:', {
+        id: editedStory.id,
+        payloadSize: `${(payloadSize / 1024 / 1024).toFixed(2)} MB`,
+        hasImageUrl: !!payload.imageUrl,
+        imageUrlLength: payload.imageUrl?.length || 0,
+        imageUrlIsBase64: payload.imageUrl?.startsWith('data:image') || false,
+      });
+      
       const response = await fetch(`${API_URL}/stories/edit?id=${editedStory.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: editedStory.title,
-          content: editedStory.content,
-          imageUrl: editedStory.imageUrl,
-        })
+        body: payloadString,
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update story');
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        console.error('❌ [SAVE-EDIT] Save failed:', errorData);
+        throw new Error(errorData.error || errorData.details || 'Failed to update story');
       }
 
       const updatedStory = await response.json();
+      console.log('✅ [SAVE-EDIT] Story saved successfully');
       
       setStories(prev => prev.map(story => 
         story.id === editedStory.id ? updatedStory : story

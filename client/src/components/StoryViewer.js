@@ -707,7 +707,7 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
             } else if (filtered.length === 0) {
               // If no voices for current language, use saved voice anyway
               defaultVoice = savedVoice;
-            }
+        }
           }
         }
         
@@ -926,20 +926,20 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
             imgData = imageUrlToUse;
           } else {
             // It's a URL, use proxy to convert to Base64
-            const response = await fetch(`${API_URL}/stories/image-proxy`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+          const response = await fetch(`${API_URL}/stories/image-proxy`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ imageUrl: imageUrlToUse })
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              imgData = data.dataUrl;
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            imgData = data.dataUrl;
             } else {
               throw new Error('Failed to proxy image');
             }
           }
-          
+            
           // Get image dimensions (works for both Base64 and proxied images)
           if (imgData) {
             const img = new Image();
@@ -1220,7 +1220,7 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
                 e.stopPropagation();
                 setMobileMenuOpen(!mobileMenuOpen);
               }}
-              whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               aria-label="Toggle settings menu"
             >
@@ -1240,8 +1240,8 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
                       background: 'rgba(0, 0, 0, 0.3)',
                       zIndex: 1001,
                     }}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={() => setMobileMenuOpen(false)}
                   />
@@ -1404,7 +1404,7 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8 }}
-            >
+        >
               {story.language}
             </LanguageTag>
           </div>
@@ -1473,26 +1473,26 @@ const StoryViewer = ({ story, onClose, onBack, isModal = true }) => {
           </SpeedControl>
 
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <ControlButton
-              onClick={handleStop}
-              disabled={!isPlaying}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label="Stop reading"
-              title="Stop reading"
-            >
-              ⏹️
-            </ControlButton>
+          <ControlButton
+            onClick={handleStop}
+            disabled={!isPlaying}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            aria-label="Stop reading"
+            title="Stop reading"
+          >
+            ⏹️
+          </ControlButton>
 
-            <ControlButton
-              onClick={togglePlayPause}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label={isPlaying ? "Pause reading" : "Start reading"}
-              title={isPlaying ? "Pause reading" : "Start reading"}
-            >
-              {isPlaying ? '⏸️' : '▶️'}
-            </ControlButton>
+          <ControlButton
+            onClick={togglePlayPause}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            aria-label={isPlaying ? "Pause reading" : "Start reading"}
+            title={isPlaying ? "Pause reading" : "Start reading"}
+          >
+            {isPlaying ? '⏸️' : '▶️'}
+          </ControlButton>
           </div>
         </ControlsContainer>
       </ViewerContent>

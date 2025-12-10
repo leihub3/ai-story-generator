@@ -117,8 +117,24 @@ module.exports = async (req, res) => {
     let imageUrl = null;
     if (!isMultipleStories) {
       try {
-        // Create a descriptive prompt for the image based on the story title/content
-        const imagePrompt = `A beautiful, colorful, child-friendly illustration for a children's story about: ${userTitle || query}. The illustration should be whimsical, magical, and suitable for children. Style: digital art, vibrant colors, fantasy elements.`;
+        // Sanitize the prompt - use only the title, not the full query which might contain inappropriate content
+        // Extract a clean, child-friendly description from the title
+        const titleForImage = userTitle || query;
+        
+        // Clean the title: remove any special characters that might cause issues
+        // Limit length to avoid overly long prompts
+        const cleanTitle = titleForImage
+          .substring(0, 200) // Limit length
+          .replace(/[^\w\s\-.,!?]/g, '') // Remove special characters except basic punctuation
+          .trim();
+        
+        // Create a safe, descriptive prompt for the image
+        const imagePrompt = `A beautiful, colorful, child-friendly illustration for a children's story about: ${cleanTitle}. The illustration should be whimsical, magical, and suitable for children. Style: digital art, vibrant colors, fantasy elements, safe for children.`;
+        
+        console.log('🎨 [IMAGE] Generating image with DALL-E...');
+        console.log('🎨 [IMAGE] Clean title:', cleanTitle);
+        console.log('🎨 [IMAGE] Full prompt:', imagePrompt);
+        console.log('🎨 [IMAGE] Prompt length:', imagePrompt.length);
 
         const imageResponse = await axios.post(
           'https://api.openai.com/v1/images/generations',
@@ -134,15 +150,16 @@ module.exports = async (req, res) => {
               Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
               'Content-Type': 'application/json',
             },
+            timeout: 60000, // 60 second timeout for image generation
           }
         );
 
         const imageUrlFromDalle = imageResponse.data.data[0].url;
-        console.log('Image generated successfully:', imageUrlFromDalle);
+        console.log('✅ [IMAGE] Image generated successfully:', imageUrlFromDalle);
         
         // Download the image and convert to Base64
         try {
-          console.log('Downloading image to convert to Base64...');
+          console.log('📥 [IMAGE] Downloading image to convert to Base64...');
           const imageDownloadResponse = await axios.get(imageUrlFromDalle, {
             responseType: 'arraybuffer',
             timeout: 30000, // 30 second timeout for image download
@@ -157,15 +174,25 @@ module.exports = async (req, res) => {
           
           // Create data URI
           imageUrl = `data:${contentType};base64,${base64String}`;
-          console.log('Image converted to Base64 successfully. Size:', base64String.length, 'characters');
+          console.log('✅ [IMAGE] Image converted to Base64 successfully. Size:', base64String.length, 'characters');
         } catch (downloadError) {
-          console.error('Error downloading/converting image to Base64:', downloadError.message);
+          console.error('❌ [IMAGE] Error downloading/converting image to Base64:', downloadError.message);
+          console.error('❌ [IMAGE] Download error details:', {
+            message: downloadError.message,
+            response: downloadError.response?.status,
+            data: downloadError.response?.data,
+          });
           // Fallback to URL if Base64 conversion fails
-          console.log('Falling back to URL storage');
+          console.log('⚠️ [IMAGE] Falling back to URL storage');
           imageUrl = imageUrlFromDalle;
         }
       } catch (error) {
-        console.error('DALL-E API error:', error.response?.data || error.message);
+        console.error('❌ [IMAGE] DALL-E API error occurred');
+        console.error('❌ [IMAGE] Error message:', error.message);
+        console.error('❌ [IMAGE] Error response status:', error.response?.status);
+        console.error('❌ [IMAGE] Error response data:', JSON.stringify(error.response?.data, null, 2));
+        console.error('❌ [IMAGE] Full error:', error);
+        
         // Continue without image if generation fails - story will still be generated
         imageUrl = null;
       }
